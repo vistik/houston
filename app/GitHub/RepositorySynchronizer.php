@@ -186,7 +186,7 @@ class RepositorySynchronizer
         // writes only its own columns; the phase column follows the pull requests, which take the longest.
         $id = $repository->id;
 
-        Concurrency::run(array_map(self::returnsItsErrors(...), [
+        $tasks = array_map(self::returnsItsErrors(...), [
             static function () use ($id, $startedAt, $lookbackStart, $backfill): void {
                 [$repository, $state] = self::load($id);
 
@@ -205,7 +205,19 @@ class RepositorySynchronizer
 
                 app(DeploymentSynchronizer::class)->sync($repository, $state, $startedAt, $lookbackStart, $backfill);
             },
-        ]), SyncRepository::MaxRuntimeSeconds);
+        ]);
+
+        // Each task sends its result back by printing it, but `queue:work --quiet` (how Laravel Cloud runs workers)
+        // sets SHELL_VERBOSITY=-1, which the task processes inherit and which silences them. Laravel then finds no
+        // output and fails with "Trying to access array offset on null", so the tasks run at normal verbosity.
+        $verbosity = getenv('SHELL_VERBOSITY');
+        self::setShellVerbosity('0');
+
+        try {
+            Concurrency::run($tasks, SyncRepository::MaxRuntimeSeconds);
+        } finally {
+            self::setShellVerbosity($verbosity === false ? null : $verbosity);
+        }
 
         $state->refresh();
 
@@ -226,6 +238,22 @@ class RepositorySynchronizer
             'workflow_runs_fetched' => $state->workflow_runs_fetched,
             'backfill' => $backfill,
         ]);
+    }
+
+    /**
+     * Child processes take their environment from putenv(), $_ENV and $_SERVER, so all three are kept in step.
+     */
+    private static function setShellVerbosity(?string $value): void
+    {
+        if ($value === null) {
+            putenv('SHELL_VERBOSITY');
+            unset($_ENV['SHELL_VERBOSITY'], $_SERVER['SHELL_VERBOSITY']);
+
+            return;
+        }
+
+        putenv("SHELL_VERBOSITY={$value}");
+        $_ENV['SHELL_VERBOSITY'] = $_SERVER['SHELL_VERBOSITY'] = $value;
     }
 
     /**

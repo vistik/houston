@@ -425,6 +425,30 @@ it('fails the sync instead of silently dropping workflow runs', function () {
         ->toThrow(GitHubException::class, 'GitHub returned 0 of 100 workflow runs');
 });
 
+it('lets the concurrent tasks print their results under a quiet queue worker', function () {
+    // `queue:work --quiet` sets SHELL_VERBOSITY=-1, which would silence the task processes.
+    putenv('SHELL_VERBOSITY=-1');
+    $_ENV['SHELL_VERBOSITY'] = $_SERVER['SHELL_VERBOSITY'] = '-1';
+
+    $verbosityDuringTasks = null;
+
+    fakeGitHub([], runs: function () use (&$verbosityDuringTasks): array {
+        $verbosityDuringTasks = [getenv('SHELL_VERBOSITY'), $_ENV['SHELL_VERBOSITY'], $_SERVER['SHELL_VERBOSITY']];
+
+        return [];
+    });
+
+    try {
+        app(RepositorySynchronizer::class)->sync($this->repository);
+
+        expect($verbosityDuringTasks)->toBe(['0', '0', '0'])
+            ->and([getenv('SHELL_VERBOSITY'), $_ENV['SHELL_VERBOSITY'], $_SERVER['SHELL_VERBOSITY']])->toBe(['-1', '-1', '-1']);
+    } finally {
+        putenv('SHELL_VERBOSITY');
+        unset($_ENV['SHELL_VERBOSITY'], $_SERVER['SHELL_VERBOSITY']);
+    }
+});
+
 it('trusts the count a workflow run page reports over the window probe', function () {
     Http::fake([
         'api.github.com/graphql' => Http::response(['data' => ['repository' => [
