@@ -44,10 +44,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Date::use(CarbonImmutable::class);
 
-        // The demo reseeds its made-up data every night.
-        DB::prohibitDestructiveCommands(
-            app()->isProduction() && ! Demo::enabled(),
-        );
+        DB::prohibitDestructiveCommands(app()->isProduction());
 
         Password::defaults(fn (): ?Password => app()->isProduction()
             ? Password::min(12)

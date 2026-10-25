@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - Pick the timezone reports are shown in under Settings → Defaults. Reports use UTC until one is picked.
-- `HOUSTON_DEMO=true` runs Houston as a read-only public demo on the made-up data of `DemoSeeder`. Visitors can look around and switch layouts and views for themselves, but can't watch, remove or sync repositories, and settings are hidden. Houston never talks to GitHub in the demo and reseeds it every night.
+- `HOUSTON_DEMO=true` runs Houston as a read-only public demo. Visitors can look around and switch layouts and views for themselves, but can't watch, remove or sync repositories, and settings are hidden. The scheduler keeps syncing the watched repositories, so the numbers stay up to date, but no visitor's request talks to GitHub.
 
 ### Changed
 

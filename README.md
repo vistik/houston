@@ -85,13 +85,9 @@ On a server, check these before you let others in:
 
 #### Running a public demo
 
-To let anyone look around without a login, run Houston on the made-up history of the demo seeder with `HOUSTON_DEMO=true`:
+To let anyone look around without a login, set Houston up as usual, then turn on `HOUSTON_DEMO=true`. Watch the repositories, add the teams and timeline events and pick the defaults first, because the demo can't change them.
 
-```bash
-php artisan migrate:fresh --seeder=DemoSeeder
-```
-
-The demo is read-only. Visitors can switch layouts, views and cards, which only they see, but can't watch, remove or sync repositories, and **Settings** is hidden. Houston never talks to GitHub in the demo, so leave `GITHUB_TOKEN` and `HOUSTON_MCP_TOKEN` empty. The login and `APP_DEBUG` are turned off, and the scheduler reseeds the demo every night so recent periods stay full. Run the scheduler as usual.
+The demo is read-only. Visitors can switch layouts, views and cards, which only they see, but can't watch, remove or sync repositories, and **Settings** is hidden. The login and `APP_DEBUG` are turned off. Run the scheduler and a queue worker as usual: they keep syncing the watched repositories so the numbers stay up to date, but no visitor's request talks to GitHub. Give `GITHUB_TOKEN` a fine-grained token that can only read public repositories and watch only public ones, and leave `HOUSTON_MCP_TOKEN` empty.
 
 Before you upgrade, read [CHANGELOG.md](CHANGELOG.md) for what changed.
 
@@ -130,7 +126,7 @@ Everything Houston-specific lives in `config/houston.php`. These can be set from
 | `HOUSTON_WORKDAY_START` / `_END` | `00:00` / `24:00` | Working hours. Use all seven days and `00:00`–`24:00` to measure calendar time.                                         |
 | `HOUSTON_MCP_TOKEN`              | _empty_           | Enables the MCP endpoint at `/mcp` for clients that send this bearer token.                                             |
 | `HOUSTON_AUTH`                   | `true`            | Requires the login created by `php artisan houston:install` before showing anything.                                    |
-| `HOUSTON_DEMO`                   | `false`           | Runs a read-only public demo on the `DemoSeeder` data. See [Running a public demo](#running-a-public-demo).             |
+| `HOUSTON_DEMO`                   | `false`           | Runs a read-only public demo. See [Running a public demo](#running-a-public-demo).                                      |
 
 To send errors to [Sentry](https://sentry.io), set `SENTRY_LARAVEL_DSN`. Leave it empty to turn Sentry off.
 

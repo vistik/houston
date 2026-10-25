@@ -264,12 +264,12 @@ class GitHubClient
     }
 
     /**
-     * Resolve the API token from config, falling back to the GitHub CLI. The demo has none, so it can't leak.
+     * Resolve the API token from config, falling back to the GitHub CLI. Only the demo's syncs may use it.
      */
     private function token(): string
     {
-        if (Demo::enabled()) {
-            throw new RuntimeException('Houston does not talk to GitHub in the demo.');
+        if (Demo::visiting()) {
+            throw new RuntimeException('Houston does not talk to GitHub for demo visitors.');
         }
 
         $token = $this->token ?? config('houston.github_token');
