@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\LandingFeature;
+use App\Metrics\MetricIcons;
 use App\Models\Repository;
 use App\Models\User;
 use Illuminate\Support\Facades\Queue;
@@ -43,6 +44,25 @@ describe('with the landing page on', function () {
         foreach (LandingFeature::cases() as $feature) {
             $response->assertSee('<section id="'.$feature->value.'"', false);
         }
+    });
+
+    it('links every metric to the first repository\'s report', function () {
+        Queue::fake();
+        Repository::factory()->create(['owner' => 'zeta', 'name' => 'app']);
+        Repository::factory()->create(['owner' => 'acme', 'name' => 'web']);
+        Repository::factory()->create(['owner' => 'acme', 'name' => 'api']);
+
+        $html = $this->get(route('landing'))->assertOk()->getContent();
+        $link = 'href="'.route('repositories.show', ['owner' => 'acme', 'name' => 'api']).'"';
+
+        expect(substr_count($html, $link))->toBe(count(MetricIcons::Glyphs));
+    });
+
+    it('lists the metrics without links before there is a repository', function () {
+        $this->get(route('landing'))
+            ->assertOk()
+            ->assertSee('Time to merge')
+            ->assertDontSee('href="'.route('repositories.index').'/', false);
     });
 
     it('shows the install guide', function () {

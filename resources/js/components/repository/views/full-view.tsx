@@ -50,6 +50,7 @@ export function FullView({
                         size="lg"
                         label="Time to merge"
                         hint="TTL · opened → merged, median"
+                        icon="cycleTime"
                         metric={kpis.cycleTime}
                     />
                     <MetricTile
@@ -57,6 +58,7 @@ export function FullView({
                         size="lg"
                         label="Pickup time"
                         hint="Ready → first response"
+                        icon="pickupTime"
                         metric={kpis.pickupTime}
                     />
                     <MetricTile
@@ -64,6 +66,7 @@ export function FullView({
                         size="lg"
                         label="Review time"
                         hint="First response → merged"
+                        icon="reviewTime"
                         metric={kpis.reviewTime}
                     />
                     <MetricTile
@@ -71,6 +74,7 @@ export function FullView({
                         size="lg"
                         label="Merged PRs"
                         hint={periodLabel}
+                        icon="throughput"
                         metric={kpis.throughput}
                     />
                     <MetricTile
@@ -82,6 +86,7 @@ export function FullView({
                                 ? `Failed / finished runs on ${defaultBranch ?? 'the default branch'}`
                                 : 'Failed / finished runs, all branches'
                         }
+                        icon="ciFailureRate"
                         metric={kpis.ciFailureRate}
                     />
                     <MetricTile
@@ -89,6 +94,7 @@ export function FullView({
                         size="lg"
                         label="Open PRs"
                         hint="Right now"
+                        icon="openPullRequests"
                         metric={kpis.openPullRequests}
                         footer={
                             <div className="flex flex-wrap items-center gap-1.5">

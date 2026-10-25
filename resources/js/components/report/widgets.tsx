@@ -9,7 +9,7 @@ import { Cell, Grid } from '@/components/report/grid';
 import type { ResponsiveSpan, Span } from '@/components/report/grid';
 import { Panel, SectionHeading } from '@/components/ui/panel';
 import { cn } from '@/lib/utils';
-import type { Metric } from '@/types';
+import type { Metric, MetricKey } from '@/types';
 
 type Spanned = { span?: Span | ResponsiveSpan };
 
@@ -123,6 +123,8 @@ export type MetricListItem<Key extends string = string> = {
     label: string;
     hint?: string;
     metric: Metric;
+    /** The metric whose icon sits before the label. */
+    icon?: MetricKey;
     /** Draws the metric over time next to it. */
     series?: (number | null)[];
 };
@@ -165,6 +167,7 @@ export function MetricList<Key extends string>({
                             label={item.label}
                             hint={item.hint}
                             metric={item.metric}
+                            icon={item.icon}
                             series={item.series}
                             selected={item.key === selected}
                             onSelect={

@@ -35,6 +35,7 @@ export function OpenSourceView({
                         size="lg"
                         label="Contributions opened"
                         hint={periodLabel}
+                        icon="opened"
                         metric={kpis.opened}
                     />
                     <MetricTile
@@ -42,6 +43,7 @@ export function OpenSourceView({
                         size="lg"
                         label="Contributions merged"
                         hint={periodLabel}
+                        icon="throughput"
                         metric={kpis.throughput}
                     />
                     <MetricTile
@@ -49,6 +51,7 @@ export function OpenSourceView({
                         size="lg"
                         label="First response"
                         hint="Ready → first response, median"
+                        icon="pickupTime"
                         metric={kpis.pickupTime}
                     />
                     <MetricTile
@@ -56,6 +59,7 @@ export function OpenSourceView({
                         size="lg"
                         label="Time to merge"
                         hint="Opened → merged, median"
+                        icon="cycleTime"
                         metric={kpis.cycleTime}
                     />
                     <MetricTile
@@ -63,6 +67,7 @@ export function OpenSourceView({
                         size="lg"
                         label="Open PRs"
                         hint="Right now"
+                        icon="openPullRequests"
                         metric={kpis.openPullRequests}
                         footer={
                             (kpis.stalePullRequests.value ?? 0) > 0 ? (
@@ -79,6 +84,7 @@ export function OpenSourceView({
                         size="lg"
                         label="Contributors"
                         hint="Opened, merged or reviewed a PR"
+                        icon="activeDevelopers"
                         metric={kpis.activeDevelopers}
                     />
                 </Headline>
@@ -142,12 +148,14 @@ export function OpenSourceView({
                             span="1/3"
                             label={`${shipsWith.slice(0, -1)} frequency`}
                             hint={`${kpis.deployments.value ?? 0} ${shipsWith.toLowerCase()} this period`}
+                            icon="deployFrequency"
                             metric={kpis.deployFrequency}
                         />
                         <MetricTile
                             span="1/3"
                             label="Time to ship"
                             hint="First commit → released, median"
+                            icon="leadTimeToProduction"
                             metric={kpis.leadTimeToProduction}
                         />
                         <PanelCell

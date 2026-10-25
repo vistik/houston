@@ -220,19 +220,19 @@
             <span class="font-mono text-xs text-muted">13 metrics</span>
           </div>
           <ul class="mt-4 flex flex-wrap gap-2 font-mono text-xs text-text">
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Time to merge</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Pickup time</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Review time</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Time to merge (p90)</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Lead time</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Coding time</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Time to approval</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Merge delay</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Waiting on reviewers</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Waiting on the author</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Merge frequency</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Merged PRs</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">PRs opened</li>
+            @include('landing.partials.metric-chip', ['metric' => 'cycleTime', 'label' => 'Time to merge'])
+            @include('landing.partials.metric-chip', ['metric' => 'pickupTime', 'label' => 'Pickup time'])
+            @include('landing.partials.metric-chip', ['metric' => 'reviewTime', 'label' => 'Review time'])
+            @include('landing.partials.metric-chip', ['metric' => 'cycleTimeP90', 'label' => 'Time to merge (p90)'])
+            @include('landing.partials.metric-chip', ['metric' => 'leadTime', 'label' => 'Lead time'])
+            @include('landing.partials.metric-chip', ['metric' => 'codingTime', 'label' => 'Coding time'])
+            @include('landing.partials.metric-chip', ['metric' => 'timeToApproval', 'label' => 'Time to approval'])
+            @include('landing.partials.metric-chip', ['metric' => 'mergeDelay', 'label' => 'Merge delay'])
+            @include('landing.partials.metric-chip', ['metric' => 'waitingOnReviewer', 'label' => 'Waiting on reviewers'])
+            @include('landing.partials.metric-chip', ['metric' => 'waitingOnAuthor', 'label' => 'Waiting on the author'])
+            @include('landing.partials.metric-chip', ['metric' => 'mergeFrequency', 'label' => 'Merge frequency'])
+            @include('landing.partials.metric-chip', ['metric' => 'throughput', 'label' => 'Merged PRs'])
+            @include('landing.partials.metric-chip', ['metric' => 'opened', 'label' => 'PRs opened'])
           </ul>
         </li>
         <li class="flex flex-col rounded-2xl border border-border bg-surface p-6">
@@ -241,15 +241,15 @@
             <span class="font-mono text-xs text-muted">9 metrics</span>
           </div>
           <ul class="mt-4 flex flex-wrap gap-2 font-mono text-xs text-text">
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">PR size</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Review rounds</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Merged without review</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Changes requested</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Review depth</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Rework after review</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Review concentration</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Reverts &amp; hotfixes</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Merge rate</li>
+            @include('landing.partials.metric-chip', ['metric' => 'pullRequestSize', 'label' => 'PR size'])
+            @include('landing.partials.metric-chip', ['metric' => 'reviewRounds', 'label' => 'Review rounds'])
+            @include('landing.partials.metric-chip', ['metric' => 'unreviewedMergeRate', 'label' => 'Merged without review'])
+            @include('landing.partials.metric-chip', ['metric' => 'changesRequestedRate', 'label' => 'Changes requested'])
+            @include('landing.partials.metric-chip', ['metric' => 'reviewDepth', 'label' => 'Review depth'])
+            @include('landing.partials.metric-chip', ['metric' => 'reworkRate', 'label' => 'Rework after review'])
+            @include('landing.partials.metric-chip', ['metric' => 'reviewConcentration', 'label' => 'Review concentration'])
+            @include('landing.partials.metric-chip', ['metric' => 'remediations', 'label' => 'Reverts & hotfixes'])
+            @include('landing.partials.metric-chip', ['metric' => 'mergeRate', 'label' => 'Merge rate'])
           </ul>
         </li>
         <li class="flex flex-col rounded-2xl border border-border bg-surface p-6">
@@ -258,18 +258,18 @@
             <span class="font-mono text-xs text-muted">12 metrics</span>
           </div>
           <ul class="mt-4 flex flex-wrap gap-2 font-mono text-xs text-text">
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">CI failure rate</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Default branch failure rate</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">PR build failure rate</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Time the default branch was red</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">CI duration</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">CI duration (p90)</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Time to recovery</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Queue time</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Flaky commits</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Re-run rate</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Workflow runs</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">CI minutes</li>
+            @include('landing.partials.metric-chip', ['metric' => 'ciFailureRate', 'label' => 'CI failure rate'])
+            @include('landing.partials.metric-chip', ['metric' => 'ciDefaultBranchFailureRate', 'label' => 'Default branch failure rate'])
+            @include('landing.partials.metric-chip', ['metric' => 'ciPullRequestFailureRate', 'label' => 'PR build failure rate'])
+            @include('landing.partials.metric-chip', ['metric' => 'defaultBranchRedShare', 'label' => 'Time the default branch was red'])
+            @include('landing.partials.metric-chip', ['metric' => 'ciDuration', 'label' => 'CI duration'])
+            @include('landing.partials.metric-chip', ['metric' => 'ciDurationP90', 'label' => 'CI duration (p90)'])
+            @include('landing.partials.metric-chip', ['metric' => 'ciRecoveryTime', 'label' => 'Time to recovery'])
+            @include('landing.partials.metric-chip', ['metric' => 'ciQueueTime', 'label' => 'Queue time'])
+            @include('landing.partials.metric-chip', ['metric' => 'ciFlakyRate', 'label' => 'Flaky commits'])
+            @include('landing.partials.metric-chip', ['metric' => 'ciRerunRate', 'label' => 'Re-run rate'])
+            @include('landing.partials.metric-chip', ['metric' => 'ciRuns', 'label' => 'Workflow runs'])
+            @include('landing.partials.metric-chip', ['metric' => 'ciMinutes', 'label' => 'CI minutes'])
           </ul>
         </li>
         <li class="relative flex flex-col overflow-hidden rounded-2xl border border-primary/40 bg-surface p-6">
@@ -279,12 +279,12 @@
             <span class="font-mono text-xs text-muted">6 metrics</span>
           </div>
           <ul class="relative mt-4 flex flex-wrap gap-2 font-mono text-xs text-text">
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Deploy frequency</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Lead time to production</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Change failure rate</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Time to restore</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Deployment failure rate</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Deploys</li>
+            @include('landing.partials.metric-chip', ['metric' => 'deployFrequency', 'label' => 'Deploy frequency'])
+            @include('landing.partials.metric-chip', ['metric' => 'leadTimeToProduction', 'label' => 'Lead time to production'])
+            @include('landing.partials.metric-chip', ['metric' => 'changeFailureRate', 'label' => 'Change failure rate'])
+            @include('landing.partials.metric-chip', ['metric' => 'timeToRestore', 'label' => 'Time to restore'])
+            @include('landing.partials.metric-chip', ['metric' => 'deploymentFailureRate', 'label' => 'Deployment failure rate'])
+            @include('landing.partials.metric-chip', ['metric' => 'deployments', 'label' => 'Deploys'])
           </ul>
         </li>
         <li class="flex flex-col rounded-2xl border border-border bg-surface p-6">
@@ -293,9 +293,9 @@
             <span class="font-mono text-xs text-muted">3 metrics</span>
           </div>
           <ul class="mt-4 flex flex-wrap gap-2 font-mono text-xs text-text">
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Open PRs</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Stale PRs</li>
-            <li class="rounded-md border border-border bg-surface-2 px-2 py-1">Active developers</li>
+            @include('landing.partials.metric-chip', ['metric' => 'openPullRequests', 'label' => 'Open PRs'])
+            @include('landing.partials.metric-chip', ['metric' => 'stalePullRequests', 'label' => 'Stale PRs'])
+            @include('landing.partials.metric-chip', ['metric' => 'activeDevelopers', 'label' => 'Active developers'])
           </ul>
           <p class="mt-auto pt-5 text-sm leading-relaxed text-muted">A PR goes stale after 7 days without activity, and the threshold is a setting. Active developers is a headcount, not a ranking: there are no per-person tables.</p>
         </li>

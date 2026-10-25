@@ -31,6 +31,7 @@ export function CiView({
                                 ? `Failed / finished runs on ${branch}`
                                 : 'Failed / finished runs, all branches'
                         }
+                        icon="ciFailureRate"
                         metric={kpis.ciFailureRate}
                     />
                     <MetricTile
@@ -38,6 +39,7 @@ export function CiView({
                         size="lg"
                         label={`Time ${branch} was red`}
                         hint="Share of working time"
+                        icon="defaultBranchRedShare"
                         metric={kpis.defaultBranchRedShare}
                     />
                     <MetricTile
@@ -45,6 +47,7 @@ export function CiView({
                         size="lg"
                         label="Time to recovery"
                         hint="Red → green, median"
+                        icon="ciRecoveryTime"
                         metric={kpis.ciRecoveryTime}
                     />
                     <MetricTile
@@ -52,6 +55,7 @@ export function CiView({
                         size="lg"
                         label="CI duration"
                         hint="Median per commit"
+                        icon="ciDuration"
                         metric={kpis.ciDuration}
                     />
                     <MetricTile
@@ -59,6 +63,7 @@ export function CiView({
                         size="lg"
                         label="Flaky commits"
                         hint="Failed and passed on the same commit"
+                        icon="ciFlakyRate"
                         metric={kpis.ciFlakyRate}
                     />
                     <MetricTile
@@ -66,6 +71,7 @@ export function CiView({
                         size="lg"
                         label="Queue time"
                         hint="Waiting for a runner, median"
+                        icon="ciQueueTime"
                         metric={kpis.ciQueueTime}
                     />
                 </Headline>

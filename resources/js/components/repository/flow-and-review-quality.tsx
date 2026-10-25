@@ -136,6 +136,7 @@ export function FlowAndReviewQuality({
     const items = (rows: Row[]): MetricListItem<PullRequestMetricKey>[] =>
         rows.map((row) => ({
             key: row.key,
+            icon: row.key,
             label: row.label,
             hint: row.hint,
             metric: report.kpis[row.key],

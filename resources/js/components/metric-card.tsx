@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { MiniTrend } from '@/components/charts/mini-trend';
 import { Sparkline } from '@/components/charts/sparkline';
 import { ArrowDownIcon, ArrowUpIcon } from '@/components/icons';
+import { MetricIcon } from '@/components/metric-icons';
 import { HoverCard, Tooltip } from '@/components/ui/hover-card';
 import type { HoverCardFocus } from '@/components/ui/hover-card';
 import {
@@ -33,6 +34,7 @@ import type {
     BenchmarkTier,
     Metric,
     MetricBenchmark,
+    MetricKey,
     MetricStatistic,
 } from '@/types';
 
@@ -517,12 +519,15 @@ export function MetricCard({
     label,
     hint,
     metric,
+    icon,
     size = 'md',
     footer,
 }: {
     label: string;
     hint?: string;
     metric: Metric;
+    /** The metric whose icon sits before the label. */
+    icon?: MetricKey;
     size?: 'md' | 'lg';
     footer?: ReactNode;
 }) {
@@ -536,8 +541,18 @@ export function MetricCard({
         <div className="flex min-w-0 flex-col rounded-xl border border-line bg-surface p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
             <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                    <div className="text-xs font-medium text-ink-secondary">
-                        <MetricLabel metric={metric}>{label}</MetricLabel>
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-ink-secondary">
+                        {icon && (
+                            <MetricIcon
+                                metric={icon}
+                                width={15}
+                                height={15}
+                                className="shrink-0 text-ink-muted"
+                            />
+                        )}
+                        <MetricLabel metric={metric} className="min-w-0">
+                            {label}
+                        </MetricLabel>
                     </div>
                     {hint && (
                         <div className="text-[11px] text-ink-muted">{hint}</div>
@@ -585,6 +600,7 @@ export function MetricRow({
     label,
     hint,
     metric,
+    icon,
     series,
     selected = false,
     onSelect,
@@ -592,6 +608,8 @@ export function MetricRow({
     label: string;
     hint?: string;
     metric: Metric;
+    /** The metric whose icon sits before the label. */
+    icon?: MetricKey;
     series?: (number | null)[];
     selected?: boolean;
     onSelect?: () => void;
@@ -599,10 +617,19 @@ export function MetricRow({
     const content = (
         <>
             <div className="min-w-0 flex-1">
-                <div className="text-sm text-ink">
+                <div className="flex items-center gap-1.5 text-sm text-ink">
+                    {icon && (
+                        <MetricIcon
+                            metric={icon}
+                            width={15}
+                            height={15}
+                            className="shrink-0 text-ink-muted"
+                        />
+                    )}
                     <MetricLabel
                         metric={metric}
                         focus={onSelect ? 'control' : 'self'}
+                        className="min-w-0"
                     >
                         {label}
                     </MetricLabel>

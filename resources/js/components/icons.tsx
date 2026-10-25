@@ -1,9 +1,9 @@
 import { useId } from 'react';
 import type { SVGProps } from 'react';
 
-type IconProps = SVGProps<SVGSVGElement>;
+export type IconProps = SVGProps<SVGSVGElement>;
 
-function Icon({ children, ...props }: IconProps) {
+export function Icon({ children, ...props }: IconProps) {
     return (
         <svg
             viewBox="0 0 24 24"

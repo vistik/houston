@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Repository;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -17,6 +18,9 @@ class LandingController extends Controller
             return to_route('home');
         }
 
-        return view('landing.home');
+        return view('landing.home', [
+            // The metric lists link to a real report: the first repository, as the dashboard orders them.
+            'firstRepository' => Repository::query()->orderBy('owner')->orderBy('name')->first(['owner', 'name']),
+        ]);
     }
 }
