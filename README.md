@@ -6,18 +6,18 @@ Houston measures engineering velocity for GitHub repositories. It syncs pull req
 
 ![Houston's repository report for laravel/framework: time to merge, pickup and review time with ratings, where the time goes, and DORA delivery metrics](public/landing/screenshots/repo-report-dark.png)
 
-- **Pull request flow:** throughput, cycle time, lead time, pickup and review time, time to approval, merge delay, size, and how long a pull request waits on reviewers versus its author.
-- **Review quality:** unreviewed merges, changes requested, review rounds, rework, and how concentrated reviewing is.
-- **CI:** failure rates on the default branch and on pull requests, flaky and rerun rates, duration, queue time, and how long the default branch stays red.
-- **Delivery (DORA):** deploy frequency, lead time to production, change failure rate and time to restore. These come from GitHub Deployments, or from releases for repositories that don't deploy.
-- **Dependencies:** how many direct Composer and npm dependencies on the default branch are behind their latest stable release, and how many by a major version, compared with a month earlier.
-- **Events:** log a change, such as introducing AI code reviews, and compare the time since with the equally long stretch before it, on every trend chart.
-- **Teams:** the same pull request metrics across every watched repository, for the people on a team. Work counts for the team someone was on when they did it.
-- **Benchmarks:** rate each metric against DORA and LinearB benchmarks, or against your own targets.
-- **Wall:** a rotating full-screen view for an office TV.
-- **MCP server:** agents can read the reports, for example to write feedback on a sprint.
+- 🚀 **Pull request flow:** throughput, cycle time, lead time, pickup and review time, time to approval, merge delay, size, and how long a pull request waits on reviewers versus its author.
+- 🔍 **Review quality:** unreviewed merges, changes requested, review rounds, rework, and how concentrated reviewing is.
+- 🚦 **CI:** failure rates on the default branch and on pull requests, flaky and rerun rates, duration, queue time, and how long the default branch stays red.
+- 🛰️ **Delivery (DORA):** deploy frequency, lead time to production, change failure rate and time to restore. These come from GitHub Deployments, or from releases for repositories that don't deploy.
+- 📦 **Dependencies:** how many direct Composer and npm dependencies on the default branch are behind their latest stable release, and how many by a major version, compared with a month earlier.
+- 📍 **Events:** log a change, such as introducing AI code reviews, and compare the time since with the equally long stretch before it, on every trend chart.
+- 👩‍🚀 **Teams:** the same pull request metrics across every watched repository, for the people on a team. Work counts for the team someone was on when they did it.
+- 🎯 **Benchmarks:** rate each metric against DORA and LinearB benchmarks, or against your own targets.
+- 🖥️ **Wall:** a rotating full-screen view for an office TV.
+- 🤖 **MCP server:** agents can read the reports, for example to write feedback on a sprint.
 
-Durations that measure people only count working time, so a pull request opened on Friday evening doesn't look two days slower than one opened on Monday.
+⏱️ Durations that measure people only count working time, so a pull request opened on Friday evening doesn't look two days slower than one opened on Monday.
 
 ## Screenshots
 
