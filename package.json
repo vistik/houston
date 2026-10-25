@@ -13,15 +13,15 @@
         "test": "vp test run"
     },
     "dependencies": {
-        "@inertiajs/react": "^3.0.0",
+        "@inertiajs/react": "^3.9.1",
         "clsx": "^2.1.1",
-        "react": "^19.2.0",
-        "react-dom": "^19.2.0",
+        "react": "^19.3.1",
+        "react-dom": "^19.3.1",
         "tailwind-merge": "^3.0.1"
     },
     "devDependencies": {
-        "@inertiajs/vite": "^3.0.0",
-        "@laravel/vite-plugin-wayfinder": "^0.1.3",
+        "@inertiajs/vite": "^3.9.1",
+        "@laravel/vite-plugin-wayfinder": "^0.1.11",
         "@rolldown/plugin-babel": "^0.2.3",
         "@tailwindcss/vite": "^4.1.11",
         "@types/react": "^19.2.0",
@@ -31,7 +31,7 @@
         "laravel-vite-plugin": "^3.1",
         "tailwindcss": "^4.0.0",
         "typescript": "^5.7.2",
-        "vite": "^8.0.0",
+        "vite": "^8.3.4",
         "vite-plus": "0.3.0"
     },
     "optionalDependencies": {
