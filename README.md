@@ -132,6 +132,8 @@ Everything Houston-specific lives in `config/houston.php`. These can be set from
 | `HOUSTON_AUTH`                   | `true`            | Requires the login created by `php artisan houston:install` before showing anything.                                    |
 | `HOUSTON_DEMO`                   | `false`           | Runs a read-only public demo on the `DemoSeeder` data. See [Running a public demo](#running-a-public-demo).             |
 
+To send errors to [Sentry](https://sentry.io), set `SENTRY_LARAVEL_DSN`. Leave it empty to turn Sentry off.
+
 The rate limit reserve, which deployment environments count as production, and which pull requests count as remediations (reverts, hotfixes and rollbacks) are set in `config/houston.php` itself.
 
 Report defaults (period, grouping and timezone) and benchmarks are set in the app under **Settings**. Every report is shown in that one timezone: daily charts, custom ranges and working hours all start and end the day at midnight there, and "last 30 days" means today and the 29 days before it. Each repository's lookback window is set under **Settings → Syncs**, and the CI workflows to leave out of its metrics on the repository's page.
