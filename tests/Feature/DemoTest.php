@@ -42,24 +42,32 @@ it('refuses to watch, remove or change repositories', function () {
         ->and($repository->fresh()->excludedWorkflowIds())->toBe([]);
 });
 
-it('refuses to sync from GitHub', function () {
+it('never lets visitors sync from GitHub', function () {
     $repository = Repository::factory()->synced()->create(['owner' => 'acme', 'name' => 'api']);
+    $repository->syncState()->update(['finished_at' => now()->subDay()]);
 
     $this->post(route('repositories.sync', $repository))->assertForbidden();
-
-    SyncRepository::trigger($repository, 'stale when viewed');
+    $this->get(route('repositories.show', ['owner' => 'acme', 'name' => 'api']))->assertOk();
+    $this->get(route('repositories.index'))->assertOk();
 
     Queue::assertNothingPushed();
     expect($repository->syncState()->status)->toBe(RepositorySyncStatus::Succeeded);
-
-    $this->artisan('houston:sync')->assertFailed();
 });
 
-it('never sends the GitHub token anywhere', function () {
+it('keeps syncing on the schedule', function () {
+    $repository = Repository::factory()->synced()->create(['owner' => 'acme', 'name' => 'api']);
+
+    $this->artisan('houston:sync --queue')->assertSuccessful();
+
+    Queue::assertPushed(SyncRepository::class, fn (SyncRepository $job): bool => $job->repository->is($repository));
+});
+
+it('never talks to GitHub for a visitor', function () {
     Http::fake();
     Process::fake();
+    request()->setLaravelSession(app('session.store'));
 
-    expect(fn () => app(GitHubClient::class)->rateLimits())->toThrow(RuntimeException::class, 'does not talk to GitHub in the demo');
+    expect(fn () => app(GitHubClient::class)->rateLimits())->toThrow(RuntimeException::class, 'does not talk to GitHub for demo visitors');
 
     Http::assertNothingSent();
     Process::assertNothingRan();
@@ -130,17 +138,13 @@ it('has no login and never shows the environment on error pages', function () {
         ->and(config('app.debug'))->toBeFalse();
 });
 
-it('reseeds every night instead of syncing', function () {
-    $commands = fn (): string => collect(app(Schedule::class)->events())
+it('schedules syncs and never wipes the synced data', function () {
+    $this->travelTo(now()->startOfDay());
+
+    $commands = collect(app(Schedule::class)->events())
         ->filter(fn (Event $event): bool => $event->isDue(app()) && $event->filtersPass(app()))
         ->map->command
         ->implode("\n");
 
-    $this->travelTo(now()->startOfDay());
-
-    expect($commands())->toContain('migrate:fresh')->not->toContain('houston:sync');
-
-    config(['houston.demo' => false]);
-
-    expect($commands())->toContain('houston:sync')->not->toContain('migrate:fresh');
+    expect($commands)->toContain('houston:sync')->not->toContain('migrate:fresh');
 });

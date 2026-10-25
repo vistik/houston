@@ -24,8 +24,7 @@ use Illuminate\Support\Facades\DB;
  * clearly speeds everything up, so its before and after comparison has a story to tell.
  *
  * Run it on a fresh database: `php artisan migrate:fresh --seeder=DemoSeeder`. The repositories don't
- * exist on GitHub, so set HOUSTON_DEMO=true to keep Houston from trying to sync them; the scheduler then
- * also reseeds every night.
+ * exist on GitHub, so syncing them fails.
  */
 class DemoSeeder extends Seeder
 {

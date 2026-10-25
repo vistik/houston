@@ -10,7 +10,6 @@ use App\GitHub\SyncInProgressException;
 use App\Jobs\SyncRepository;
 use App\Models\Repository;
 use App\Models\SystemEvent;
-use App\Support\Demo;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -25,12 +24,6 @@ class SyncRepositories extends Command
 
     public function handle(RepositorySynchronizer $synchronizer): int
     {
-        if (Demo::enabled()) {
-            $this->components->error('The demo shows made-up repositories, so there is nothing to sync.');
-
-            return self::FAILURE;
-        }
-
         $fullName = $this->argument('repository');
         $coordinates = null;
 

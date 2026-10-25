@@ -40,7 +40,8 @@ class SyncRepository implements ShouldBeUnique, ShouldQueue
     public function __construct(public Repository $repository) {}
 
     /**
-     * Queue a sync and mark the cache as refreshing so the UI can reflect it right away.
+     * Queue a sync and mark the cache as refreshing so the UI can reflect it right away. Demo visitors
+     * can't, so only the scheduler keeps the demo fresh.
      *
      * @param  string  $reason  Why the sync was asked for, for the log.
      */
@@ -48,7 +49,7 @@ class SyncRepository implements ShouldBeUnique, ShouldQueue
     {
         $state = $repository->syncState();
 
-        if (Demo::enabled() || $state->isInProgress()) {
+        if (Demo::visiting() || $state->isInProgress()) {
             return;
         }
 

@@ -153,10 +153,10 @@ return [
     | Public Demo
     |--------------------------------------------------------------------------
     |
-    | Turns Houston into a read-only demo anyone may look around, meant for
-    | the made-up data of `DemoSeeder`. There is no login, nothing visitors
-    | do is saved for others, settings are hidden, Houston never talks to
-    | GitHub and the scheduler reseeds the demo every night.
+    | Turns Houston into a read-only demo anyone may look around. There is
+    | no login, nothing visitors do is saved for others, settings are hidden
+    | and their requests never talk to GitHub. The scheduler keeps syncing
+    | the watched repositories, so the numbers stay up to date.
     |
     */
 

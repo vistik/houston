@@ -18,7 +18,7 @@ import type { RepositoryInfo } from '@/types';
  * Warns whenever the report reads days the cached data doesn't reach back to, however the period
  * was picked: a period that starts before it misses data, and one that fits still compares against
  * a previous period that may not. Offers to sync the missing history unless it is already on its way
- * or this is the demo, which never syncs.
+ * or this is the demo, whose visitors can't.
  */
 export function HistoryGap({
     repository,

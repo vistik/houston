@@ -39,7 +39,7 @@ export function useLookbackConfirmation(
     const [extending, setExtending] = useState(false);
 
     const choosePeriod = (period: PeriodFilters, apply: () => void) => {
-        // The demo never syncs, so its periods show what there is.
+        // Demo visitors can't extend the history, so their periods show what there is.
         const shortOf =
             demo || samePeriod(period, current)
                 ? []
