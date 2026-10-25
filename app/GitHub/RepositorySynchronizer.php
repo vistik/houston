@@ -133,6 +133,7 @@ class RepositorySynchronizer
      * was started by the queue, the scheduler or the CLI.
      *
      * @throws SyncInProgressException
+     * @throws RateLimitedException when GitHub's rate limit runs out mid-sync
      */
     public function sync(Repository $repository): void
     {
