@@ -31,7 +31,7 @@ composer ci:check
 
 CI also fails when PHP line coverage drops below 95%. To check it locally, install [PCOV](https://github.com/krakjoe/pcov) or Xdebug and run `composer test:coverage`.
 
-Add a line under `Unreleased` in [CHANGELOG.md](CHANGELOG.md) for changes people will notice.
+Release notes are written on the GitHub release, and [CHANGELOG.md](CHANGELOG.md) is updated from them, so leave it alone in pull requests. Write the pull request title for the people using Houston, since it ends up in the release notes.
 
 To fix formatting:
 
