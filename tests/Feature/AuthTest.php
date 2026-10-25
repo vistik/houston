@@ -154,6 +154,53 @@ describe('houston:install', function () {
             ->toContain('HOUSTON_LANDING=false');
     });
 
+    it('generates a login without asking anything', function () {
+        $this->artisan('houston:install', ['--generate' => true, '--no-interaction' => true])
+            ->expectsOutputToContain('houston@example.com')
+            ->assertSuccessful();
+
+        expect(User::sole()->email)->toBe('houston@example.com')
+            ->and(File::get("{$this->environmentPath}/.env"))->toContain('HOUSTON_AUTH=true')
+            ->toContain('HOUSTON_LANDING=false');
+    });
+
+    it('keeps the email when generating over an existing login', function () {
+        $user = User::factory()->create(['email' => 'old@example.com']);
+
+        $this->artisan('houston:install', ['--generate' => true])->assertSuccessful();
+
+        $login = User::sole();
+
+        expect($login->email)->toBe('old@example.com')
+            ->and($login->password)->not->toBe($user->password);
+    });
+
+    it('generates a login with the given email', function () {
+        User::factory()->create(['email' => 'old@example.com']);
+
+        $this->artisan('houston:install', ['--generate' => true, '--email' => 'new@example.com'])->assertSuccessful();
+
+        expect(User::sole()->email)->toBe('new@example.com');
+    });
+
+    it('generates a login on hosts without a .env file', function () {
+        File::delete("{$this->environmentPath}/.env");
+
+        $this->artisan('houston:install', ['--generate' => true, '--email' => 'admin@example.com'])
+            ->expectsOutputToContain('There is no .env to update')
+            ->expectsOutputToContain('admin@example.com')
+            ->assertSuccessful();
+
+        expect(User::sole()->email)->toBe('admin@example.com');
+    });
+
+    it('refuses to generate a login with an invalid email', function () {
+        $this->artisan('houston:install', ['--generate' => true, '--email' => 'not-an-email'])->assertFailed();
+
+        expect(User::count())->toBe(0)
+            ->and(File::get("{$this->environmentPath}/.env"))->toContain('HOUSTON_AUTH=false');
+    });
+
     it('skips the questions when it cannot ask them', function () {
         $this->artisan('houston:install', ['--no-interaction' => true])->assertSuccessful();
 

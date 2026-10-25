@@ -43,6 +43,8 @@ php artisan houston:install
 
 It asks whether Houston should require a login, creates the one login it has (an email and a password), and sets `HOUSTON_AUTH` in `.env`. It also sets `HOUSTON_LANDING=false`, so `/` goes straight to the dashboard. Run it again to change the password, or turn the login off on your own machine. The MCP endpoint doesn't use the login; it has its own token.
 
+For scripts and servers without a terminal, `php artisan houston:install --generate` turns the login on without asking anything. It uses the email from `--email`, or else keeps the existing login's email (or uses `houston@example.com`), sets a random password, and prints both.
+
 ### GitHub token
 
 Set `GITHUB_TOKEN` in `.env`. When it is empty, Houston uses the token of the GitHub CLI (`gh auth token`), which is handy on your own machine.
@@ -108,6 +110,8 @@ php artisan houston:sync laravel/framework
 php artisan houston:sync --queue         # dispatch to the queue instead of running inline
 php artisan houston:flush                # wipe the cache, keeping the watched repositories
 php artisan houston:install              # turn the login on or off, or change it
+php artisan houston:install --generate   # turn the login on with a random password, without asking anything
+php artisan houston:install --generate --email=you@example.com
 ```
 
 To report on teams, create them under **Settings → Teams** and add people by their GitHub login.

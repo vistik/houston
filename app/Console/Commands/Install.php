@@ -9,18 +9,23 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Env;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\password;
 use function Laravel\Prompts\text;
 
-#[Signature('houston:install')]
+#[Signature('houston:install {--generate : Turn the login on and create one with a random password, without asking anything} {--email= : The email for a generated login}')]
 #[Description('Decide whether Houston asks for a login, and create the login')]
 class Install extends Command
 {
     public function handle(): int
     {
+        if ($this->option('generate')) {
+            return $this->generateLogin();
+        }
+
         // Composer runs this during `composer setup` without a terminal (like in CI), where the
         // prompts would answer with their defaults and fail, so treat that as non-interactive too.
         $hasTerminal = (defined('STDIN') && stream_isatty(STDIN)) || $this->laravel->runningUnitTests();
@@ -80,6 +85,43 @@ class Install extends Command
             validate: fn (string $value): ?string => $value === $password ? null : 'The passwords don\'t match.',
         );
 
+        $this->storeLogin($email, $password);
+    }
+
+    /**
+     * Without --email it keeps the email of an existing login, so generating again only changes the password.
+     */
+    private function generateLogin(): int
+    {
+        $email = $this->option('email') ?? User::query()->value('email') ?? 'houston@example.com';
+
+        if (Validator::make(['email' => $email], ['email' => ['email']])->fails()) {
+            $this->components->error("{$email} isn't a valid email.");
+
+            return self::FAILURE;
+        }
+
+        $password = Str::password(24, symbols: false);
+
+        $this->storeLogin($email, $password);
+
+        // Hosts like Laravel Cloud set the environment without a .env file, and the login is on by default,
+        // so the login is still usable there and the password has to be shown either way.
+        if (is_file($this->laravel->environmentFilePath())) {
+            $this->writeEnvironment(requireLogin: true);
+        } else {
+            $this->components->warn('There is no .env to update, so make sure HOUSTON_AUTH=true (the default) and HOUSTON_LANDING=false are set in your environment.');
+        }
+
+        $this->components->info('Houston asks for this login: authorized personnel only.');
+        $this->components->twoColumnDetail('Email', $email);
+        $this->components->twoColumnDetail('Password', $password);
+
+        return self::SUCCESS;
+    }
+
+    private function storeLogin(string $email, string $password): void
+    {
         DB::transaction(function () use ($email, $password): void {
             User::query()->delete();
             User::query()->create(['name' => 'Houston', 'email' => $email, 'password' => $password]);
