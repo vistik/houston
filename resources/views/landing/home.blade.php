@@ -46,7 +46,7 @@
       "name": "Houston",
       "description": "Free, open-source DORA and PR metrics for your GitHub repos. Run it yourself with one token; your data never leaves your server.",
       "applicationCategory": "DeveloperApplication",
-      "operatingSystem": "Linux, macOS, Windows (self-hosted, PHP 8.3+)",
+      "operatingSystem": "Linux, macOS, Windows (self-hosted, PHP 8.5.12+)",
       "license": "https://opensource.org/licenses/MIT",
       "url": "https://github.com/vistik/Houston"
     }
@@ -148,9 +148,9 @@
       <div class="mx-auto mt-8 max-w-4xl">
         <div class="mx-auto flex w-fit max-w-full items-center gap-2 rounded-xl border border-border bg-surface-2 p-2 text-left">
           <div class="min-w-0 flex-1 overflow-x-auto px-3 py-2">
-            <code class="font-mono text-sm whitespace-nowrap text-text"><span aria-hidden="true" class="select-none text-muted">$ </span>git clone https://github.com/vistik/Houston.git &amp;&amp; cd Houston &amp;&amp; composer setup</code>
+            <code class="font-mono text-sm whitespace-nowrap text-text"><span aria-hidden="true" class="select-none text-muted">$ </span>git clone https://github.com/vistik/houston.git &amp;&amp; cd houston &amp;&amp; composer setup</code>
           </div>
-          <button type="button" data-copy="git clone https://github.com/vistik/Houston.git &amp;&amp; cd Houston &amp;&amp; composer setup" aria-label="Copy the quickstart command" class="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted transition hover:border-border-strong hover:text-text">
+          <button type="button" data-copy="git clone https://github.com/vistik/houston.git &amp;&amp; cd houston &amp;&amp; composer setup" aria-label="Copy the quickstart command" class="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted transition hover:border-border-strong hover:text-text">
             <svg data-icon="copy" aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
             <svg data-icon="check" aria-hidden="true" viewBox="0 0 24 24" class="hidden size-4 text-accent" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
           </button>
@@ -186,10 +186,9 @@
   <section aria-label="Project facts" class="border-y border-border bg-surface-2">
     <ul class="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-6 gap-y-3 px-4 py-6 font-mono text-xs text-muted sm:px-6 sm:text-sm">
       <li class="flex items-center gap-2"><span class="size-1.5 rounded-md bg-accent" aria-hidden="true"></span>MIT</li>
-      <li>Laravel 13 / PHP 8.3+</li>
+      <li>Laravel 13 / PHP 8.5</li>
       <li>React 19</li>
       <li>SQLite</li>
-      <li class="rounded-md border border-dashed border-border-strong px-2 py-0.5">[★ stars]</li>
       <li class="rounded-md border border-dashed border-border-strong px-2 py-0.5">[version]</li>
     </ul>
   </section>
@@ -812,10 +811,10 @@
             <div class="min-w-0 flex-1">
               <h3 class="font-display text-lg font-semibold tracking-tight text-text">Clone and set up</h3>
               <div class="mt-3 flex items-start gap-2 rounded-xl border border-border bg-surface-2 p-2">
-                <pre class="min-w-0 flex-1 overflow-x-auto px-3 py-2 font-mono text-sm leading-relaxed text-text"><code>git clone https://github.com/vistik/Houston.git
-cd Houston
+                <pre class="min-w-0 flex-1 overflow-x-auto px-3 py-2 font-mono text-sm leading-relaxed text-text"><code>git clone https://github.com/vistik/houston.git
+cd houston
 composer setup</code></pre>
-                <button type="button" data-copy="git clone https://github.com/vistik/Houston.git &amp;&amp; cd Houston &amp;&amp; composer setup" aria-label="Copy the setup commands" class="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted transition hover:border-border-strong hover:text-text">
+                <button type="button" data-copy="git clone https://github.com/vistik/houston.git &amp;&amp; cd houston &amp;&amp; composer setup" aria-label="Copy the setup commands" class="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted transition hover:border-border-strong hover:text-text">
                   <svg data-icon="copy" aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
                   <svg data-icon="check" aria-hidden="true" viewBox="0 0 24 24" class="hidden size-4 text-accent" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
                 </button>
@@ -848,7 +847,7 @@ composer setup</code></pre>
                   <svg data-icon="check" aria-hidden="true" viewBox="0 0 24 24" class="hidden size-4 text-accent" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
                 </button>
               </div>
-              <p class="mt-3 text-sm leading-relaxed text-muted">Starts the scheduler, five queue workers, a log tail and Vite. It doesn't start a web server: serve the app with Laravel Herd, or run <code class="inline-code">php artisan serve</code> next to it. Then click <span class="text-text">Watch repository</span> and enter <code class="inline-code">owner/name</code>.</p>
+              <p class="mt-3 text-sm leading-relaxed text-muted">Starts the web server at <code class="inline-code">http://localhost:8000</code>, the scheduler, a queue worker, a log tail and Vite. Open it and click <span class="text-text">Watch repository</span> and enter <code class="inline-code">owner/name</code>.</p>
             </div>
           </li>
         </ol>
@@ -857,7 +856,7 @@ composer setup</code></pre>
           <div class="rounded-2xl border border-border bg-surface p-6">
             <h3 class="font-display text-lg font-semibold tracking-tight text-text">Requirements</h3>
             <ul class="mt-4 space-y-2 font-mono text-sm text-text">
-              <li class="flex justify-between gap-4 border-b border-border pb-2"><span>PHP</span><span class="text-muted">8.3+</span></li>
+              <li class="flex justify-between gap-4 border-b border-border pb-2"><span>PHP</span><span class="text-muted">8.5.12+</span></li>
               <li class="flex justify-between gap-4 border-b border-border pb-2"><span>Composer</span><span class="text-muted">2</span></li>
               <li class="flex justify-between gap-4 border-b border-border pb-2"><span>Node + npm</span><span class="text-muted">22</span></li>
               <li class="flex justify-between gap-4"><span>Database</span><span class="text-muted">SQLite by default</span></li>

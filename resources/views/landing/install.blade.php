@@ -43,7 +43,7 @@
       "@type": "SoftwareApplication",
       "name": "Houston",
       "applicationCategory": "DeveloperApplication",
-      "operatingSystem": "Linux, macOS, Windows (self-hosted, PHP 8.3+)",
+      "operatingSystem": "Linux, macOS, Windows (self-hosted, PHP 8.5.12+)",
       "license": "https://opensource.org/licenses/MIT",
       "url": "https://github.com/vistik/Houston"
     }
@@ -77,7 +77,7 @@
       @endif
       <ul class="mt-8 flex flex-wrap gap-x-6 gap-y-3 font-mono text-xs text-muted sm:text-sm">
         <li class="flex items-center gap-2"><span class="size-1.5 rounded-md bg-accent" aria-hidden="true"></span>MIT</li>
-        <li>PHP 8.3+</li>
+        <li>PHP 8.5.12+</li>
         <li>Node 22</li>
         <li>SQLite by default</li>
         <li>No Docker needed</li>
@@ -114,7 +114,7 @@
           <table class="w-full text-left text-sm">
             <caption class="sr-only">What Houston needs</caption>
             <tbody class="divide-y divide-border">
-              <tr><th scope="row" class="w-2/5 px-4 py-3 font-medium text-text sm:px-5">PHP</th><td class="px-4 py-3 text-muted sm:px-5">8.3 or newer (CI runs on 8.5)</td></tr>
+              <tr><th scope="row" class="w-2/5 px-4 py-3 font-medium text-text sm:px-5">PHP</th><td class="px-4 py-3 text-muted sm:px-5">8.5.12 or newer</td></tr>
               <tr><th scope="row" class="px-4 py-3 font-medium text-text sm:px-5">Composer</th><td class="px-4 py-3 text-muted sm:px-5">2</td></tr>
               <tr><th scope="row" class="px-4 py-3 font-medium text-text sm:px-5">Node and npm</th><td class="px-4 py-3 text-muted sm:px-5">Node 22, to build the frontend</td></tr>
               <tr><th scope="row" class="px-4 py-3 font-medium text-text sm:px-5">Database</th><td class="px-4 py-3 text-muted sm:px-5">SQLite by default; any database Laravel supports works</td></tr>
@@ -129,10 +129,10 @@
         <p class="font-mono text-xs font-medium tracking-widest text-primary uppercase">Step 1</p>
         <h2 id="setup-title" class="mt-2 font-display text-2xl font-semibold tracking-tight text-text sm:text-3xl">Clone and set up</h2>
         <div class="mt-6 flex items-start gap-2 rounded-xl border border-border bg-surface-2 p-2">
-          <pre class="min-w-0 flex-1 overflow-x-auto px-3 py-2 font-mono text-sm leading-relaxed text-text"><code>git clone https://github.com/vistik/Houston.git
-cd Houston
+          <pre class="min-w-0 flex-1 overflow-x-auto px-3 py-2 font-mono text-sm leading-relaxed text-text"><code>git clone https://github.com/vistik/houston.git
+cd houston
 composer setup</code></pre>
-          <button type="button" data-copy="git clone https://github.com/vistik/Houston.git &amp;&amp; cd Houston &amp;&amp; composer setup" aria-label="Copy the setup commands" class="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted transition hover:border-border-strong hover:text-text">
+          <button type="button" data-copy="git clone https://github.com/vistik/houston.git &amp;&amp; cd houston &amp;&amp; composer setup" aria-label="Copy the setup commands" class="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted transition hover:border-border-strong hover:text-text">
             <svg data-icon="copy" aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
             <svg data-icon="check" aria-hidden="true" viewBox="0 0 24 24" class="hidden size-4 text-accent" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
           </button>
@@ -206,19 +206,13 @@ composer setup</code></pre>
         </div>
         <p class="mt-4 text-base leading-relaxed text-muted">This runs <code class="inline-code">php artisan dev</code>, which starts, side by side:</p>
         <ul class="mt-4 grid gap-2 font-mono text-xs sm:grid-cols-2 sm:text-sm">
+          <li class="rounded-lg border border-border bg-surface px-3 py-2 text-text">web server <span class="block text-muted">php artisan serve</span></li>
           <li class="rounded-lg border border-border bg-surface px-3 py-2 text-text">scheduler <span class="block text-muted">php artisan schedule:work</span></li>
-          <li class="rounded-lg border border-border bg-surface px-3 py-2 text-text">5 queue workers <span class="block text-muted">php artisan queue:listen</span></li>
+          <li class="rounded-lg border border-border bg-surface px-3 py-2 text-text">queue worker <span class="block text-muted">php artisan queue:listen</span></li>
           <li class="rounded-lg border border-border bg-surface px-3 py-2 text-text">log tail <span class="block text-muted">php artisan pail</span></li>
           <li class="rounded-lg border border-border bg-surface px-3 py-2 text-text">Vite <span class="block text-muted">npm run dev</span></li>
         </ul>
-        <p class="mt-4 text-base leading-relaxed text-muted">Five workers let repositories sync side by side instead of queueing behind a long first sync. There is no web server in the list, because it expects Laravel Herd to serve the app. Without Herd, run this in a second terminal and open <code class="inline-code">http://localhost:8000</code>:</p>
-        <div class="mt-4 flex items-start gap-2 rounded-xl border border-border bg-surface-2 p-2">
-          <pre class="min-w-0 flex-1 overflow-x-auto px-3 py-2 font-mono text-sm leading-relaxed text-text"><code><span aria-hidden="true" class="select-none text-muted">$ </span>php artisan serve</code></pre>
-          <button type="button" data-copy="php artisan serve" aria-label="Copy php artisan serve" class="grid size-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-muted transition hover:border-border-strong hover:text-text">
-            <svg data-icon="copy" aria-hidden="true" viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
-            <svg data-icon="check" aria-hidden="true" viewBox="0 0 24 24" class="hidden size-4 text-accent" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
-          </button>
-        </div>
+        <p class="mt-4 text-base leading-relaxed text-muted">Then open <code class="inline-code">http://localhost:8000</code>. If Laravel Herd already serves the app, its <code class="inline-code">.test</code> address works too.</p>
 
         <h3 class="mt-10 font-display text-lg font-semibold tracking-tight text-text">On a long-running server</h3>
         <p class="mt-3 text-base leading-relaxed text-muted">Serve the app like any Laravel app, then keep two processes running: a queue worker for the syncs, and the scheduler.</p>
