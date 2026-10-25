@@ -7,8 +7,9 @@ All notable changes to Houston are documented in this file. It is updated from t
 ## [v1.0.1](https://github.com/vistik/houston/compare/v1.0.0...v1.0.1) - 2026-10-25
 
 ## What's Changed
-* Show real, synced data in the demo by @vistik in https://github.com/vistik/houston/pull/6
-* Require PHP 8.5.12, add README screenshots and fix the website by @vistik in https://github.com/vistik/houston/pull/8
+
+- Show real, synced data in the demo by @vistik in https://github.com/vistik/houston/pull/6
+- Require PHP 8.5.12, add README screenshots and fix the website by @vistik in https://github.com/vistik/houston/pull/8
 
 **Full Changelog**: https://github.com/vistik/houston/compare/v1.0.0...v1.0.1
 
@@ -26,4 +27,3 @@ All notable changes to Houston are documented in this file. It is updated from t
 - 🔒 **Authorized personnel only.** A single login, on by default. Set it up with `php artisan houston:install`, or `--generate` for zero questions.
 - ⛽ **Easy on fuel.** Syncs every 15 minutes and pauses before GitHub's rate limit runs dry.
 - 🏠 **Launches from your laptop.** MIT licensed, SQLite by default, and nothing leaves your server.
-
