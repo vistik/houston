@@ -28,12 +28,12 @@ import { MetricHistoryContext, metricHistory } from '@/lib/metric-history';
 import {
     isCustomPeriod,
     periodLabel,
-    periodQuery,
+    reportQuery,
     ReportPeriod,
 } from '@/lib/periods';
-import type { Granularity, PeriodFilters } from '@/lib/periods';
+import type { ReportFilters } from '@/lib/periods';
 import { TimelineEvents } from '@/lib/timeline-events';
-import { destroy, index, show, wall } from '@/routes/repositories';
+import { destroy, index, metric, show, wall } from '@/routes/repositories';
 import type {
     DependencyOverview,
     FocusedTimelineEvent,
@@ -51,13 +51,7 @@ type Props = {
         fullName: string;
         avatarUrl: string | null;
     }[];
-    filters: PeriodFilters & {
-        granularity: Granularity | null;
-        complete: boolean;
-        bots: boolean;
-        /** The timeline event the period runs from, through today. */
-        event: number | null;
-    };
+    filters: ReportFilters;
     events: TimelineEvent[];
     event: FocusedTimelineEvent | null;
     report: VelocityReport;
@@ -99,19 +93,7 @@ export default function RepositoryShow({
         };
 
         router.get(
-            show.url(
-                { owner, name },
-                {
-                    query: {
-                        ...periodQuery(next),
-                        granularity: next.granularity ?? undefined,
-                        // Always explicit, so unticking it overrides a default that leaves the current bucket out.
-                        complete: next.complete ? 1 : 0,
-                        bots: next.bots ? 1 : undefined,
-                        event: next.event ?? undefined,
-                    },
-                },
-            ),
+            show.url({ owner, name }, { query: reportQuery(next) }),
             {},
             { preserveScroll: true, preserveState: true },
         );
@@ -247,7 +229,20 @@ export default function RepositoryShow({
 
             {repository.sync.hasData ? (
                 <ReportPeriod value={filters}>
-                    <MetricHistoryContext value={metricHistory(report)}>
+                    <MetricHistoryContext
+                        value={metricHistory({
+                            ...report,
+                            href: (key) =>
+                                metric.url(
+                                    {
+                                        owner: repository.owner,
+                                        name: repository.name,
+                                        metric: key,
+                                    },
+                                    { query: reportQuery(filters) },
+                                ),
+                        })}
+                    >
                         <TimelineEvents
                             value={{
                                 events,

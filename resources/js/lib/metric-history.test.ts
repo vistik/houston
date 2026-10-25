@@ -69,4 +69,38 @@ describe('metricHistory', () => {
         expect(timelines.has(kpis.ciDuration)).toBe(false);
         expect(timelines.has(kpis.opened)).toBe(false);
     });
+
+    it('links each metric, and each trend to the metric it charts', () => {
+        const kpis = {
+            throughput: metric('count'),
+            cycleTime: metric('duration', 'median'),
+        };
+        const trends = {
+            throughput: { title: 'Throughput' },
+            timeToMerge: { title: 'Time to merge' },
+            deployments: { title: 'Deploys' },
+        };
+
+        const { links } = metricHistory({
+            kpis,
+            trend,
+            trends,
+            period,
+            href: (key) => `/metrics/${key}`,
+        });
+
+        expect(links.get(kpis.cycleTime)).toBe('/metrics/cycleTime');
+        expect(links.get(trends.throughput)).toBe('/metrics/throughput');
+        expect(links.get(trends.timeToMerge)).toBe('/metrics/cycleTime');
+        // A trend whose metric the report doesn't have links nowhere.
+        expect(links.has(trends.deployments)).toBe(false);
+    });
+
+    it('links nothing without an href', () => {
+        const kpis = { throughput: metric('count') };
+
+        expect(
+            metricHistory({ kpis, trend, period }).links.has(kpis.throughput),
+        ).toBe(false);
+    });
 });

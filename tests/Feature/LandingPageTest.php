@@ -46,16 +46,19 @@ describe('with the landing page on', function () {
         }
     });
 
-    it('links every metric to the first repository\'s report', function () {
+    it('links every metric to its own page for the first repository', function () {
         Queue::fake();
         Repository::factory()->create(['owner' => 'zeta', 'name' => 'app']);
         Repository::factory()->create(['owner' => 'acme', 'name' => 'web']);
         Repository::factory()->create(['owner' => 'acme', 'name' => 'api']);
 
         $html = $this->get(route('landing'))->assertOk()->getContent();
-        $link = 'href="'.route('repositories.show', ['owner' => 'acme', 'name' => 'api']).'"';
 
-        expect(substr_count($html, $link))->toBe(count(MetricIcons::Glyphs));
+        foreach (array_keys(MetricIcons::Glyphs) as $metric) {
+            expect($html)->toContain('href="'.route('repositories.metric', ['owner' => 'acme', 'name' => 'api', 'metric' => $metric]).'"');
+        }
+
+        expect(substr_count($html, 'href="'.route('repositories.show', ['owner' => 'acme', 'name' => 'api']).'/metrics/'))->toBe(count(MetricIcons::Glyphs));
     });
 
     it('lists the metrics without links before there is a repository', function () {

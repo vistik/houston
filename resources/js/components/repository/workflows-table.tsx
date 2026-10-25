@@ -1,13 +1,14 @@
-import { router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { use, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ArrowDownIcon, ArrowUpIcon } from '@/components/icons';
+import { ArrowDownIcon, ArrowUpIcon, ExpandIcon } from '@/components/icons';
 import { Tooltip } from '@/components/ui/hover-card';
 import { Panel } from '@/components/ui/panel';
 import { formatDuration, formatNumber, formatPercent } from '@/lib/format';
+import { MetricHistoryContext } from '@/lib/metric-history';
 import { cn } from '@/lib/utils';
 import { excludedWorkflows } from '@/routes/repositories';
-import type { RepositoryInfo, WorkflowStats } from '@/types';
+import type { Metric, MetricKey, RepositoryInfo, WorkflowStats } from '@/types';
 
 type SortKey =
     | 'name'
@@ -22,6 +23,18 @@ type SortKey =
     | 'included';
 
 type Sort = { key: SortKey; direction: 'asc' | 'desc' };
+
+/** The repository's CI metric each column breaks down per workflow, to open it on its own page. */
+const COLUMN_METRICS: Partial<Record<SortKey, MetricKey>> = {
+    runs: 'ciRuns',
+    failureRate: 'ciFailureRate',
+    defaultBranchFailureRate: 'ciDefaultBranchFailureRate',
+    flakyRate: 'ciFlakyRate',
+    queueTime: 'ciQueueTime',
+    duration: 'ciDuration',
+    durationP90: 'ciDurationP90',
+    minutes: 'ciMinutes',
+};
 
 const SORT_VALUES: Record<
     SortKey,
@@ -74,9 +87,12 @@ function sortWorkflows(
 export function WorkflowsTable({
     workflows,
     repository,
+    kpis,
 }: {
     workflows: WorkflowStats[];
     repository: RepositoryInfo;
+    /** The repository's metrics, so each column can open the CI metric it breaks down. */
+    kpis?: Partial<Record<MetricKey, Metric>>;
 }) {
     const { demo } = usePage().props;
     const [sort, setSort] = useState<Sort>({ key: 'runs', direction: 'desc' });
@@ -96,6 +112,7 @@ export function WorkflowsTable({
         sortKey: key,
         sort,
         onSort: sortBy,
+        metric: COLUMN_METRICS[key] && kpis?.[COLUMN_METRICS[key]],
     });
 
     // Toggle against the stored list, which also holds workflows that didn't run in this period.
@@ -315,6 +332,7 @@ function SortHeader({
     sortKey,
     sort,
     onSort,
+    metric,
     align = 'right',
     hint,
     className,
@@ -323,11 +341,14 @@ function SortHeader({
     sortKey: SortKey;
     sort: Sort;
     onSort: (key: SortKey) => void;
+    /** The repository's metric the column breaks down per workflow, linked when it has a page. */
+    metric?: Metric;
     align?: 'left' | 'right';
     hint?: string;
     className?: string;
     children: ReactNode;
 }) {
+    const href = metric && use(MetricHistoryContext)?.links.get(metric);
     const active = sort.key === sortKey;
     const Arrow = sort.direction === 'asc' ? ArrowUpIcon : ArrowDownIcon;
     const label = hint ? (
@@ -351,11 +372,12 @@ function SortHeader({
                     : undefined
             }
             className={cn(
-                'px-3 py-2 font-medium',
+                'group px-3 py-2 font-medium',
                 align === 'right' ? 'text-right' : 'text-left',
                 className,
             )}
         >
+            {href && align === 'right' && <ColumnLink href={href} />}
             <button
                 type="button"
                 onClick={() => onSort(sortKey)}
@@ -373,7 +395,25 @@ function SortHeader({
                     className={active ? 'opacity-100' : 'opacity-0'}
                 />
             </button>
+            {href && align === 'left' && <ColumnLink href={href} />}
         </th>
+    );
+}
+
+/**
+ * Opens the repository's metric a column breaks down per workflow, on its own page. Shown on hover
+ * where there is a pointer to hover with, and always on touch screens.
+ */
+function ColumnLink({ href }: { href: string }) {
+    return (
+        <Link
+            href={href}
+            aria-label="Open this metric for the whole repository"
+            title="Open for the whole repository"
+            className="mx-0.5 inline-flex rounded p-0.5 align-middle text-ink-muted transition hover:bg-line/60 hover:text-ink focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100"
+        >
+            <ExpandIcon width={11} height={11} />
+        </Link>
     );
 }
 

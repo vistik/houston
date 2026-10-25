@@ -467,22 +467,14 @@ class VelocityReport
     private function series(?array $only = null): array
     {
         $series = [];
-        $starts = $this->period->buckets();
-        $days = array_map(fn (CarbonImmutable $start): int => $this->days($start, $start->addDays($this->period->bucketDays())->min($this->period->to)), $starts);
-        $deliveries = $this->delivery?->bucketWindows($this->period, $days);
         $metrics = array_filter(
             Metrics::all(),
             fn (Metric $metric, string $key): bool => ($only === null || in_array($key, $only, true))
-                && ($metric instanceof PullRequestMetric || ($deliveries !== null && $metric instanceof DeliveryMetric)),
+                && ($metric instanceof PullRequestMetric || ($this->delivery !== null && $metric instanceof DeliveryMetric)),
             ARRAY_FILTER_USE_BOTH,
         );
 
-        foreach ($this->bucketSlices() as $index => $slice) {
-            $window = new Window(
-                makePullRequests: fn (): PullRequestWindow => $this->pullRequestWindow($slice, $days[$index]),
-                makeDelivery: $deliveries === null ? null : fn (): DeliveryWindow => $deliveries[$index],
-            );
-
+        foreach ($this->bucketWindows() as $window) {
             foreach ($metrics as $key => $metric) {
                 $series[$key][] = $metric->calculate($window);
             }
@@ -494,6 +486,57 @@ class VelocityReport
         }
 
         return $series;
+    }
+
+    /**
+     * One metric per trend bucket. For a metric that sums up one value per item, both the median
+     * and the average of those values per bucket come with it. CI metrics take their own queries per
+     * bucket, which is why the report's series leave CI out; a page about one metric can afford it.
+     *
+     * @return array{values: list<float|int|null>, median?: list<float|null>, average?: list<float|null>}
+     */
+    public function metricSeries(string $key): array
+    {
+        $metric = Metrics::all()[$key] ?? null;
+
+        if ($metric === null || $metric instanceof SnapshotMetric) {
+            throw new LogicException("[{$key}] can't be broken down per bucket.");
+        }
+
+        $windows = $this->bucketWindows();
+
+        if (! $metric instanceof Distribution) {
+            return ['values' => array_map(fn (Window $window): float|int|null => $metric->calculate($window), $windows)];
+        }
+
+        $samples = array_map(fn (Window $window): Collection => $metric->values($window), $windows);
+
+        return [
+            'values' => array_map(fn (Collection $values): ?float => $metric->statistic()->of($values), $samples),
+            'median' => array_map(fn (Collection $values): ?float => Statistic::Median->of($values), $samples),
+            'average' => array_map(fn (Collection $values): ?float => Statistic::Average->of($values), $samples),
+        ];
+    }
+
+    /**
+     * Everything the metrics of each trend bucket are calculated from. CI runs are only queried when a
+     * metric asks for them.
+     *
+     * @return list<Window>
+     */
+    private function bucketWindows(): array
+    {
+        $starts = $this->period->buckets();
+        $ends = array_map(fn (CarbonImmutable $start): CarbonImmutable => $start->addDays($this->period->bucketDays())->min($this->period->to), $starts);
+        $days = array_map(fn (CarbonImmutable $start, CarbonImmutable $end): int => $this->days($start, $end), $starts, $ends);
+        $deliveries = $this->delivery?->bucketWindows($this->period, $days);
+        $slices = $this->bucketSlices();
+
+        return array_map(fn (int $index, array $slice): Window => new Window(
+            makePullRequests: fn (): PullRequestWindow => $this->pullRequestWindow($slice, $days[$index]),
+            makeCi: $this->ci === null ? null : fn (): CiWindow => $this->ci()->window($starts[$index], $ends[$index]->min($this->period->chartedUntil)),
+            makeDelivery: $deliveries === null ? null : fn (): DeliveryWindow => $deliveries[$index],
+        ), array_keys($slices), $slices);
     }
 
     /**

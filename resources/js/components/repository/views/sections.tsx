@@ -120,6 +120,7 @@ export function CiHealth({
                 <WorkflowsTable
                     workflows={report.workflows}
                     repository={repository}
+                    kpis={report.kpis}
                 />
             </Cell>
         </Section>

@@ -61,6 +61,26 @@ export function periodQuery(period: PeriodFilters) {
     return { days: period.all ? 'all' : period.days };
 }
 
+/** The filters of a repository report, as a repository page and its metric pages take them. */
+export type ReportFilters = PeriodFilters & {
+    granularity: Granularity | null;
+    complete: boolean;
+    bots: boolean;
+    /** The timeline event the period runs from, through today. */
+    event: number | null;
+};
+
+export function reportQuery(filters: ReportFilters) {
+    return {
+        ...periodQuery(filters),
+        granularity: filters.granularity ?? undefined,
+        // Always explicit, so unticking it overrides a default that leaves the current bucket out.
+        complete: filters.complete ? 1 : 0,
+        bots: filters.bots ? 1 : undefined,
+        event: filters.event ?? undefined,
+    };
+}
+
 export function periodLabel(period: PeriodFilters): string {
     if (!isCustomPeriod(period)) {
         if (period.all) {
