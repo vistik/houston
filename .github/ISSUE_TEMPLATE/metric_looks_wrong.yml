@@ -1,0 +1,55 @@
+name: Metric looks wrong
+description: A number in a report doesn't match what you see on GitHub.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for checking the numbers. These are easiest to fix when we can look at the same pull requests, so a public repository helps a lot.
+  - type: input
+    id: repository
+    attributes:
+      label: Repository
+      description: The repository as `owner/name`. If it's private, say so and describe its shape instead.
+    validations:
+      required: true
+  - type: input
+    id: period
+    attributes:
+      label: Period
+      description: The period or date range of the report, for example "last 30 days" or 2026-09-01 to 2026-09-14.
+    validations:
+      required: true
+  - type: input
+    id: metric
+    attributes:
+      label: Metric
+      description: The metric as it's named in Houston, for example "Cycle time" or "Change failure rate".
+    validations:
+      required: true
+  - type: input
+    id: shown
+    attributes:
+      label: Value shown
+      description: What Houston shows.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Value expected
+      description: What you expected, and how you got to it. Pull requests that you think are counted wrongly help most.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Houston version or commit
+      description: The release, or the output of `git rev-parse --short HEAD`.
+    validations:
+      required: true
+  - type: textarea
+    id: settings
+    attributes:
+      label: Settings
+      description: Anything you changed from the defaults that could matter, such as working hours, lookback days, excluded workflows or production environments.

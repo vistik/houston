@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .muted { stroke: #c9c8bf; }
+    .up { stroke: #13a05a; }
+    .craft { fill: #13a05a; }
+    .planet { stroke: #2a78d6; fill: #2a78d6; }
+    @media (prefers-color-scheme: dark) {
+      .muted { stroke: #4a4a43; }
+      .up { stroke: #34c77b; }
+      .craft { fill: #34c77b; }
+      .planet { stroke: #5598e7; fill: #5598e7; }
+    }
+  </style>
+  <defs>
+    <mask id="behind" maskUnits="userSpaceOnUse" x="0" y="0" width="32" height="32">
+      <rect width="32" height="32" fill="#fff"/>
+      <circle cx="16" cy="16" r="8.2" fill="#000"/>
+    </mask>
+  </defs>
+  <g fill="none" stroke-linecap="round">
+    <ellipse class="muted" cx="16" cy="16" rx="13.5" ry="5.5" transform="rotate(-25 16 16)" stroke-width="2" mask="url(#behind)"/>
+    <circle class="planet" cx="16" cy="16" r="6.6" fill-opacity="0.12" stroke-width="2.4"/>
+    <path class="up" d="M3.77 21.71A13.5 5.5 -25 0 0 21.99 18.98" stroke-width="2.6"/>
+    <circle class="craft" cx="25.65" cy="16.15" r="2.1"/>
+  </g>
+</svg>

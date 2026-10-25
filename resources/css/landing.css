@@ -1,0 +1,368 @@
+@import 'tailwindcss' source(none);
+@source "../views/landing";
+@source "../js/landing.js";
+
+/* Houston: Direction A "Instrument" + palette b3 "Lens Ink" + Geist / Geist Mono.
+   Every colour, font and radius in the pages goes through these tokens. */
+@theme {
+    --color-bg: #0a0c11;
+    --color-surface: #12161e;
+    --color-text: #e9edf3;
+    --color-muted: #97a0ae;
+    --color-primary: #62a4ff;
+    --color-on-primary: #0a0c11;
+    --color-accent: #3fcf7a;
+    /* Benchmark tier tones, as in the app: elite and good use accent. */
+    --color-warn: #fab219;
+    --color-bad: #ef6b6b;
+    --color-border: #232a36;
+
+    --color-surface-2: color-mix(
+        in oklab,
+        var(--color-surface) 55%,
+        var(--color-bg)
+    );
+    --color-surface-3: color-mix(
+        in oklab,
+        var(--color-surface) 80%,
+        var(--color-text) 4%
+    );
+    --color-primary-soft: color-mix(
+        in oklab,
+        var(--color-primary) 16%,
+        transparent
+    );
+    --color-accent-soft: color-mix(
+        in oklab,
+        var(--color-accent) 16%,
+        transparent
+    );
+    --color-warn-soft: color-mix(in oklab, var(--color-warn) 14%, transparent);
+    --color-bad-soft: color-mix(in oklab, var(--color-bad) 20%, transparent);
+    --color-border-strong: color-mix(
+        in oklab,
+        var(--color-border) 70%,
+        var(--color-muted)
+    );
+    --color-skeleton: color-mix(
+        in oklab,
+        var(--color-border) 75%,
+        var(--color-surface)
+    );
+    --color-skeleton-hi: color-mix(
+        in oklab,
+        var(--color-border) 60%,
+        var(--color-muted) 18%
+    );
+
+    --font-display: 'Geist', ui-sans-serif, system-ui, sans-serif;
+    --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --animate-rise: rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.15s both;
+    @keyframes rise {
+        from {
+            opacity: 0;
+            transform: translateY(1.5rem);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+}
+
+@layer base {
+    /* Code blocks that scroll sideways: a thin scrollbar in the palette, not the browser's light default. */
+    .overflow-x-auto {
+        scrollbar-width: thin;
+        scrollbar-color: color-mix(
+                in oklab,
+                var(--color-muted) 45%,
+                transparent
+            )
+            transparent;
+    }
+    html {
+        background-color: var(--color-bg);
+        color-scheme: dark;
+    }
+    body {
+        font-family: var(--font-sans);
+        background-color: var(--color-bg);
+        color: var(--color-text);
+        -webkit-font-smoothing: antialiased;
+    }
+    :focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 3px;
+    }
+    [id] {
+        scroll-margin-top: 6rem;
+    }
+    summary {
+        list-style: none;
+    }
+    summary::-webkit-details-marker {
+        display: none;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        html {
+            scroll-behavior: smooth;
+        }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
+    }
+}
+
+@layer components {
+    .hero-grid {
+        background-image:
+            linear-gradient(
+                to right,
+                color-mix(in oklab, var(--color-border) 55%, transparent) 1px,
+                transparent 1px
+            ),
+            linear-gradient(
+                to bottom,
+                color-mix(in oklab, var(--color-border) 55%, transparent) 1px,
+                transparent 1px
+            );
+        background-size: 56px 56px;
+        mask-image: radial-gradient(
+            ellipse 70% 60% at 50% 0%,
+            black 30%,
+            transparent 75%
+        );
+        -webkit-mask-image: radial-gradient(
+            ellipse 70% 60% at 50% 0%,
+            black 30%,
+            transparent 75%
+        );
+    }
+    .starfield {
+        --star: color-mix(in oklab, var(--color-text) 55%, transparent);
+        --star-dim: color-mix(in oklab, var(--color-text) 25%, transparent);
+        background-image:
+            radial-gradient(1.5px 1.5px at 8% 14%, var(--star), transparent),
+            radial-gradient(1px 1px at 23% 41%, var(--star-dim), transparent),
+            radial-gradient(1px 1px at 37% 9%, var(--star), transparent),
+            radial-gradient(
+                1.5px 1.5px at 52% 33%,
+                var(--star-dim),
+                transparent
+            ),
+            radial-gradient(1px 1px at 66% 18%, var(--star), transparent),
+            radial-gradient(1px 1px at 79% 46%, var(--star-dim), transparent),
+            radial-gradient(1.5px 1.5px at 91% 11%, var(--star), transparent),
+            radial-gradient(1px 1px at 15% 72%, var(--star-dim), transparent),
+            radial-gradient(1px 1px at 44% 63%, var(--star), transparent),
+            radial-gradient(1px 1px at 71% 79%, var(--star-dim), transparent),
+            radial-gradient(1.5px 1.5px at 86% 66%, var(--star), transparent);
+        background-size: 520px 360px;
+        mask-image: radial-gradient(
+            ellipse 80% 70% at 50% 0%,
+            black 20%,
+            transparent 80%
+        );
+        -webkit-mask-image: radial-gradient(
+            ellipse 80% 70% at 50% 0%,
+            black 20%,
+            transparent 80%
+        );
+    }
+    /* Two extra layers of fainter, denser stars, tiled at sizes that don't line up. */
+    .starfield::before,
+    .starfield::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+    }
+    .starfield::before {
+        background-image:
+            radial-gradient(1px 1px at 12% 22%, var(--star-dim), transparent),
+            radial-gradient(1px 1px at 31% 78%, var(--star), transparent),
+            radial-gradient(1px 1px at 48% 12%, var(--star-dim), transparent),
+            radial-gradient(1px 1px at 59% 57%, var(--star-dim), transparent),
+            radial-gradient(1px 1px at 74% 31%, var(--star), transparent),
+            radial-gradient(1px 1px at 88% 84%, var(--star-dim), transparent),
+            radial-gradient(1px 1px at 6% 91%, var(--star-dim), transparent);
+        background-size: 290px 230px;
+    }
+    .starfield::after {
+        background-image:
+            radial-gradient(2px 2px at 18% 36%, var(--star), transparent),
+            radial-gradient(1px 1px at 42% 88%, var(--star-dim), transparent),
+            radial-gradient(
+                1.5px 1.5px at 63% 7%,
+                var(--star-dim),
+                transparent
+            ),
+            radial-gradient(1px 1px at 81% 52%, var(--star), transparent),
+            radial-gradient(1px 1px at 95% 27%, var(--star-dim), transparent);
+        background-size: 810px 560px;
+    }
+
+    /* Now and then a comet streaks across: a bright head with a fading trail,
+       visible for the first tenth of its cycle. Hidden for reduced motion. */
+    .comets {
+        mask-image: radial-gradient(
+            ellipse 85% 75% at 50% 0%,
+            black 25%,
+            transparent 85%
+        );
+        -webkit-mask-image: radial-gradient(
+            ellipse 85% 75% at 50% 0%,
+            black 25%,
+            transparent 85%
+        );
+    }
+    .comets > span {
+        position: absolute;
+        width: var(--length, 120px);
+        height: 1.5px;
+        border-radius: 999px;
+        background: linear-gradient(
+            to right,
+            transparent,
+            color-mix(in oklab, var(--color-text) 70%, transparent)
+        );
+        opacity: 0;
+        transform-origin: right center;
+        animation: comet var(--duration, 14s) linear var(--delay, 0s) infinite;
+    }
+    .comets > span::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: -1px;
+        width: 3px;
+        height: 3px;
+        border-radius: 999px;
+        background: var(--color-text);
+        box-shadow: 0 0 6px 1px
+            color-mix(in oklab, var(--color-primary) 70%, transparent);
+        transform: translateY(-50%);
+    }
+    @keyframes comet {
+        0% {
+            opacity: 0;
+            transform: rotate(var(--angle, 20deg)) translateX(0);
+        }
+        2% {
+            opacity: 1;
+        }
+        8% {
+            opacity: 1;
+        }
+        11% {
+            opacity: 0;
+            transform: rotate(var(--angle, 20deg))
+                translateX(var(--travel, 45vw));
+        }
+        100% {
+            opacity: 0;
+            transform: rotate(var(--angle, 20deg))
+                translateX(var(--travel, 45vw));
+        }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .comets {
+            display: none;
+        }
+    }
+    .hero-glow {
+        background: radial-gradient(
+            closest-side,
+            color-mix(in oklab, var(--color-primary) 30%, transparent),
+            transparent
+        );
+        filter: blur(40px);
+    }
+    .side-glow {
+        background: radial-gradient(
+            closest-side,
+            color-mix(in oklab, var(--color-primary) 16%, transparent),
+            transparent
+        );
+        filter: blur(30px);
+    }
+    .accent-glow {
+        background: radial-gradient(
+            closest-side,
+            color-mix(in oklab, var(--color-accent) 12%, transparent),
+            transparent
+        );
+        filter: blur(30px);
+    }
+    .window-shadow {
+        box-shadow:
+            0 0 0 1px color-mix(in oklab, var(--color-text) 4%, transparent)
+                inset,
+            0 30px 80px -20px color-mix(in oklab, var(--color-bg) 85%, black),
+            0 0 120px -40px
+                color-mix(in oklab, var(--color-primary) 40%, transparent);
+    }
+    .chart-area {
+        background: linear-gradient(
+            to bottom,
+            color-mix(in oklab, var(--color-primary) 18%, transparent),
+            transparent
+        );
+        clip-path: polygon(
+            0 70%,
+            12% 58%,
+            24% 64%,
+            36% 46%,
+            48% 52%,
+            60% 34%,
+            72% 40%,
+            84% 24%,
+            100% 30%,
+            100% 100%,
+            0 100%
+        );
+    }
+    .chart-area-accent {
+        background: linear-gradient(
+            to bottom,
+            color-mix(in oklab, var(--color-accent) 22%, transparent),
+            transparent
+        );
+        clip-path: polygon(
+            0 62%,
+            14% 66%,
+            28% 48%,
+            42% 54%,
+            56% 38%,
+            70% 44%,
+            84% 28%,
+            100% 22%,
+            100% 100%,
+            0 100%
+        );
+    }
+    .fade-bottom {
+        background: linear-gradient(to bottom, transparent, var(--color-bg));
+    }
+    .tv-stand {
+        clip-path: polygon(30% 0, 70% 0, 82% 100%, 18% 100%);
+    }
+    .inline-code {
+        @apply border-border bg-surface-2 text-text rounded-md border px-1.5 py-0.5 font-mono;
+        font-size: 0.875em;
+        overflow-wrap: anywhere;
+    }
+    .kbd {
+        @apply border-border-strong bg-surface-3 text-text inline-grid min-w-7 place-items-center rounded-md border border-b-2 px-1.5 py-0.5 font-mono text-xs;
+    }
+}

@@ -1,0 +1,174 @@
+@import 'tailwindcss';
+
+@source '../views';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* The wall's TV layout sizes everything in vh, which only fits on a wide, landscape screen. */
+@custom-variant wall (@media (width >= 64rem) and (min-aspect-ratio: 16/10));
+
+@theme {
+    --font-sans:
+        'Geist', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    /* Dialogs rise into place over a fading backdrop (resources/js/components/ui/dialog.tsx). */
+    --animate-dialog-in: dialog-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+    --animate-backdrop-in: backdrop-in 180ms ease-out;
+
+    @keyframes dialog-in {
+        from {
+            opacity: 0;
+            transform: translateY(8px) scale(0.98);
+        }
+    }
+
+    @keyframes backdrop-in {
+        from {
+            opacity: 0;
+        }
+    }
+}
+
+@theme inline {
+    --color-page: var(--page);
+    --color-surface: var(--surface);
+    --color-surface-raised: var(--surface-raised);
+    --color-ink: var(--ink);
+    --color-ink-secondary: var(--ink-secondary);
+    --color-ink-muted: var(--ink-muted);
+    --color-line: var(--line);
+    --color-line-strong: var(--line-strong);
+    --color-accent: var(--accent);
+    --color-accent-soft: var(--accent-soft);
+    --color-on-accent: var(--on-accent);
+    --color-good: var(--good);
+    --color-good-soft: var(--good-soft);
+    --color-bad: var(--bad);
+    --color-bad-soft: var(--bad-soft);
+    --color-warn: var(--warn);
+    --color-warn-soft: var(--warn-soft);
+    --color-series-1: var(--series-1);
+    --color-series-2: var(--series-2);
+    --color-series-3: var(--series-3);
+    --color-series-4: var(--series-4);
+    --color-series-5: var(--series-5);
+}
+
+:root {
+    color-scheme: light;
+    --page: #f4f6f9;
+    --surface: #fafbfc;
+    --surface-raised: #ffffff;
+    --ink: #0a0c11;
+    --ink-secondary: #4a5363;
+    --ink-muted: #7d8796;
+    --line: #e1e5ec;
+    --line-strong: #c3cad5;
+    --grid: #e8ebf0;
+    --backdrop-grid: rgb(195 202 213 / 0.32);
+    --backdrop-glow: rgb(31 111 214 / 0.06);
+    --accent: #1f6fd6;
+    --accent-soft: rgb(31 111 214 / 0.1);
+    --on-accent: #ffffff;
+    --good: #0f7a3d;
+    --good-soft: rgb(63 207 122 / 0.16);
+    --bad: #b42d2d;
+    --bad-soft: rgb(208 59 59 / 0.1);
+    --warn: #8a5a00;
+    --warn-soft: rgb(250 178 25 / 0.18);
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1fb066;
+    --series-4: #eda100;
+    --series-5: #e87ba4;
+    --logo-track: #c3cad5;
+    --logo-rise: #1fb066;
+}
+
+/* Dark mode is the landing page's "Lens Ink" palette (resources/css/landing.css). */
+:root.dark {
+    color-scheme: dark;
+    --page: #0a0c11;
+    --surface: #12161e;
+    --surface-raised: #181d26;
+    --ink: #e9edf3;
+    --ink-secondary: #c0c7d2;
+    --ink-muted: #97a0ae;
+    --line: #232a36;
+    --line-strong: #3a4352;
+    --grid: #1b212b;
+    --backdrop-grid: rgb(35 42 54 / 0.45);
+    --backdrop-glow: rgb(98 164 255 / 0.09);
+    --accent: #62a4ff;
+    --accent-soft: rgb(98 164 255 / 0.16);
+    --on-accent: #0a0c11;
+    --good: #3fcf7a;
+    --good-soft: rgb(63 207 122 / 0.16);
+    --bad: #ef6b6b;
+    --bad-soft: rgb(208 59 59 / 0.2);
+    --warn: #fab219;
+    --warn-soft: rgb(250 178 25 / 0.14);
+    --series-1: #62a4ff;
+    --series-2: #d95926;
+    --series-3: #3fcf7a;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --logo-track: #3a4352;
+    --logo-rise: #3fcf7a;
+}
+
+@layer base {
+    body {
+        @apply bg-page text-ink;
+    }
+
+    .tabular {
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+@layer components {
+    /*
+     * A calm echo of the landing page's hero-grid and hero-glow: a faint grid and glow
+     * that only sit behind the top of the page and scroll away with it. It is one
+     * absolutely positioned layer of gradients (no fixed position, no blur filter),
+     * and cards are opaque surfaces, so charts never sit on top of it.
+     */
+    .page-backdrop {
+        background-image:
+            radial-gradient(
+                ellipse 50% 100% at 50% 0%,
+                var(--backdrop-glow),
+                transparent
+            ),
+            linear-gradient(
+                to right,
+                var(--backdrop-grid) 1px,
+                transparent 1px
+            ),
+            linear-gradient(
+                to bottom,
+                var(--backdrop-grid) 1px,
+                transparent 1px
+            );
+        background-size:
+            100% 100%,
+            56px 56px,
+            56px 56px;
+        background-position: center top;
+        mask-image: radial-gradient(
+            ellipse 60% 100% at 50% 0%,
+            black 20%,
+            transparent 70%
+        );
+    }
+
+    @media print {
+        .page-backdrop {
+            display: none;
+        }
+    }
+}
