@@ -37,6 +37,9 @@ jobs:
       # The same checks as `composer ci:check`, with the tests run once under
       # PCOV so CI fails when line coverage drops below 95%.
       - name: Check Frontend
+        # Vitest starts a Vite dev server, which laravel-vite-plugin refuses to do in CI.
+        env:
+          LARAVEL_BYPASS_ENV_CHECK: 1
         run: |
           npm run check
           npm run test
