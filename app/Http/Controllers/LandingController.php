@@ -19,7 +19,7 @@ class LandingController extends Controller
         }
 
         return view('landing.home', [
-            // The metric lists link to a real report: the first repository, as the dashboard orders them.
+            // Each metric in the lists links to its own page for a real repository: the first, as the dashboard orders them.
             'firstRepository' => Repository::query()->orderBy('owner')->orderBy('name')->first(['owner', 'name']),
         ]);
     }

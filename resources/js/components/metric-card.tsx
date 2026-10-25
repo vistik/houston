@@ -1,8 +1,9 @@
+import { Link } from '@inertiajs/react';
 import { use } from 'react';
 import type { ReactNode } from 'react';
 import { MiniTrend } from '@/components/charts/mini-trend';
 import { Sparkline } from '@/components/charts/sparkline';
-import { ArrowDownIcon, ArrowUpIcon } from '@/components/icons';
+import { ArrowDownIcon, ArrowUpIcon, ExpandIcon } from '@/components/icons';
 import { MetricIcon } from '@/components/metric-icons';
 import { HoverCard, Tooltip } from '@/components/ui/hover-card';
 import type { HoverCardFocus } from '@/components/ui/hover-card';
@@ -427,7 +428,8 @@ function MetricOverTime({
 /**
  * A metric's or trend's title, explaining on hover or keyboard focus how it is calculated, the median
  * and average this period for metrics that sum up one value per item, and how it moved across the
- * period when the page provides a MetricHistoryContext that knows it.
+ * period when the page provides a MetricHistoryContext that knows it. Links to the metric's own page
+ * when the context has one, unless the label already sits inside a link or button.
  *
  * Pass `focus="control"` when the label sits inside a link or button, so focusing that shows the card.
  */
@@ -459,15 +461,16 @@ export function MetricLabel({
         timeline &&
         unit &&
         timeline.values.filter((value) => value !== null).length >= 2;
+    const href = focus === 'self' ? history?.links.get(metric) : undefined;
 
-    return (
+    const label = (
         <HoverCard
             className={cn(
                 'max-w-full rounded-sm focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none',
-                className,
+                !href && className,
             )}
             panelClassName="w-72 rounded-xl p-3"
-            focus={focus}
+            focus={href ? 'control' : focus}
             card={
                 <div className="flex flex-col gap-1">
                     <div className="font-medium text-ink">{children}</div>
@@ -505,13 +508,39 @@ export function MetricLabel({
                             unit={unit}
                         />
                     )}
+                    {href && (
+                        <p className="mt-1 border-t border-line pt-2 text-[11px] text-ink-muted">
+                            Click to see it on a page of its own.
+                        </p>
+                    )}
                 </div>
             }
         >
-            <span className="cursor-help truncate underline decoration-line-strong decoration-dotted underline-offset-[3px]">
+            <span
+                className={cn(
+                    'truncate underline decoration-line-strong decoration-dotted underline-offset-[3px]',
+                    href ? 'cursor-pointer' : 'cursor-help',
+                )}
+            >
                 {children}
             </span>
         </HoverCard>
+    );
+
+    if (!href) {
+        return label;
+    }
+
+    return (
+        <Link
+            href={href}
+            className={cn(
+                'inline-flex max-w-full rounded-sm hover:text-ink focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none',
+                className,
+            )}
+        >
+            {label}
+        </Link>
     );
 }
 
@@ -594,7 +623,8 @@ export function MetricCard({
 
 /**
  * Dense row layout for secondary metrics. Pass `series` to show the metric over time, and
- * `onSelect` to make the row pickable.
+ * `onSelect` to make the row pickable. A pickable row links to the metric's own page with an icon
+ * beside it when the page's MetricHistoryContext has one, since the row itself is a button.
  */
 export function MetricRow({
     label,
@@ -614,6 +644,9 @@ export function MetricRow({
     selected?: boolean;
     onSelect?: () => void;
 }) {
+    const href = onSelect
+        ? use(MetricHistoryContext)?.links.get(metric)
+        : undefined;
     const content = (
         <>
             <div className="min-w-0 flex-1">
@@ -669,17 +702,49 @@ export function MetricRow({
         );
     }
 
-    return (
+    const button = (
         <button
             type="button"
             onClick={onSelect}
             aria-pressed={selected}
             className={cn(
-                '-mx-2 flex w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-lg px-2 py-2.5 text-left transition hover:bg-line/40 focus-visible:ring-2 focus-visible:ring-accent-soft focus-visible:outline-none',
-                selected && 'bg-accent-soft hover:bg-accent-soft',
+                'flex items-center justify-between gap-3 rounded-lg py-2.5 text-left transition focus-visible:ring-2 focus-visible:ring-accent-soft focus-visible:outline-none',
+                href
+                    ? 'min-w-0 flex-1 pl-2'
+                    : cn(
+                          '-mx-2 w-[calc(100%+1rem)] px-2 hover:bg-line/40',
+                          selected && 'bg-accent-soft hover:bg-accent-soft',
+                      ),
             )}
         >
             {content}
         </button>
+    );
+
+    if (!href) {
+        return button;
+    }
+
+    // Shown on hover where there is a pointer to hover with, and always on touch screens.
+    return (
+        <div
+            className={cn(
+                'group -mx-2 flex w-[calc(100%+1rem)] items-center gap-1 rounded-lg pr-1 transition hover:bg-line/40',
+                selected && 'bg-accent-soft hover:bg-accent-soft',
+            )}
+        >
+            {button}
+            <Link
+                href={href}
+                aria-label={`Open ${label} on its own page`}
+                title="Open on its own page"
+                className={cn(
+                    'shrink-0 rounded-md p-1 text-ink-muted transition hover:bg-line/60 hover:text-ink focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100',
+                    selected && 'pointer-fine:opacity-100',
+                )}
+            >
+                <ExpandIcon width={13} height={13} />
+            </Link>
+        </div>
     );
 }

@@ -47,6 +47,12 @@ export const ExternalIcon = (props: IconProps) => (
     </Icon>
 );
 
+export const ExpandIcon = (props: IconProps) => (
+    <Icon {...props}>
+        <path d="M15 4h5v5M20 4l-6 6M9 20H4v-5M4 20l6-6" />
+    </Icon>
+);
+
 export const LockIcon = (props: IconProps) => (
     <Icon {...props}>
         <rect x="5" y="11" width="14" height="10" rx="2" />

@@ -10,6 +10,7 @@ use App\Http\Controllers\RepositoryCardViewController;
 use App\Http\Controllers\RepositoryController;
 use App\Http\Controllers\RepositoryExcludedWorkflowsController;
 use App\Http\Controllers\RepositoryLookbackController;
+use App\Http\Controllers\RepositoryMetricController;
 use App\Http\Controllers\RepositorySuggestionController;
 use App\Http\Controllers\RepositorySyncController;
 use App\Http\Controllers\RepositoryViewController;
@@ -47,6 +48,7 @@ Route::middleware(RequireLogin::class)->group(function () {
     Route::get('/repos/suggestions', [RepositorySuggestionController::class, 'index'])->middleware('throttle:120,1')->name('repositories.suggestions');
     Route::get('/repos/{owner}/{name}', [RepositoryController::class, 'show'])->name('repositories.show');
     Route::get('/repos/{owner}/{name}/wall', RepositoryWallController::class)->name('repositories.wall');
+    Route::get('/repos/{owner}/{name}/metrics/{metric}', RepositoryMetricController::class)->name('repositories.metric');
     Route::delete('/repos/{repository}', [RepositoryController::class, 'destroy'])->name('repositories.destroy');
     Route::put('/repos/{repository}/lookback', [RepositoryLookbackController::class, 'update'])->name('repositories.lookback');
     Route::put('/repos/{repository}/excluded-workflows', [RepositoryExcludedWorkflowsController::class, 'update'])->name('repositories.excluded-workflows');

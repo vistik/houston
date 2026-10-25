@@ -137,19 +137,45 @@ class ReportCache
     }
 
     /**
+     * One metric of the repository per trend bucket, with the median and average per bucket for a
+     * metric that sums up one value per item. The full report carries neither, nor CI metrics.
+     *
+     * @return array{values: list<float|int|null>, median?: list<float|null>, average?: list<float|null>}
+     */
+    public function metricSeries(Repository $repository, Period $period, string $key, bool $includeBots = false): array
+    {
+        $scope = CiFailureRateScope::current();
+
+        return $this->cached(
+            "houston:report:metric-series:{$key}:{$repository->id}:{$period->key()}:".(int) $includeBots,
+            $this->repositoryVersion($repository, $period, $scope),
+            fn (): array => (new VelocityReport($repository, $period, $includeBots, ciFailureRateScope: $scope))->metricSeries($key),
+        );
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function remember(ReportKind $kind, Repository $repository, Period $period, bool $includeBots): array
     {
-        $syncedAt = $repository->sync?->finished_at?->getTimestamp() ?? 0;
-        $changedAt = $repository->updated_at?->getTimestamp() ?? 0;
         $scope = CiFailureRateScope::current();
 
         return $this->cached(
             "houston:report:{$kind->value}:{$repository->id}:{$period->key()}:".(int) $includeBots,
-            self::Format.":{$scope->value}:{$period->timezone}:{$syncedAt}:{$changedAt}",
+            $this->repositoryVersion($repository, $period, $scope),
             fn (): array => $kind->build(new VelocityReport($repository, $period, $includeBots, ciFailureRateScope: $scope)),
         );
+    }
+
+    /**
+     * What a cached repository report was built from, so it is rebuilt once any of it changes.
+     */
+    private function repositoryVersion(Repository $repository, Period $period, CiFailureRateScope $scope): string
+    {
+        $syncedAt = $repository->sync?->finished_at?->getTimestamp() ?? 0;
+        $changedAt = $repository->updated_at?->getTimestamp() ?? 0;
+
+        return self::Format.":{$scope->value}:{$period->timezone}:{$syncedAt}:{$changedAt}";
     }
 
     /**
@@ -169,8 +195,10 @@ class ReportCache
     }
 
     /**
-     * @param  Closure(): array<string, mixed>  $build
-     * @return array<string, mixed>
+     * @template TReport of array<array-key, mixed>
+     *
+     * @param  Closure(): TReport  $build
+     * @return TReport
      */
     private function cached(string $key, string $version, Closure $build): array
     {
