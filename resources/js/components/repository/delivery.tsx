@@ -70,7 +70,12 @@ export function Delivery({
     };
 
     const tile = (label: string, hint: string, key: MetricKey) => (
-        <MetricTile label={label} hint={hint} metric={kpis[key] as Metric} />
+        <MetricTile
+            label={label}
+            hint={hint}
+            icon={key}
+            metric={kpis[key] as Metric}
+        />
     );
 
     return (
