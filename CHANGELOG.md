@@ -2,7 +2,17 @@
 
 All notable changes to Houston are documented in this file. It is updated from the [GitHub releases](https://github.com/vistik/houston/releases) when one is published, so edit the release notes rather than this file.
 
-## [Unreleased](https://github.com/vistik/houston/compare/v1.0.1...HEAD)
+## [Unreleased](https://github.com/vistik/houston/compare/v1.0.2...HEAD)
+
+## [v1.0.2](https://github.com/vistik/houston/compare/v1.0.1...v1.0.2) - 2026-10-25
+
+### What's Changed
+
+* Give every metric its own icon by @vistik in https://github.com/vistik/houston/pull/11
+* Update the changelog from GitHub releases by @vistik in https://github.com/vistik/houston/pull/12
+* Give every metric a page of its own by @vistik in https://github.com/vistik/houston/pull/13
+
+**Full Changelog**: https://github.com/vistik/houston/compare/v1.0.1...v1.0.2
 
 ## [v1.0.1](https://github.com/vistik/houston/compare/v1.0.0...v1.0.1) - 2026-10-25
 
