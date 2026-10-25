@@ -21,7 +21,11 @@ class Install extends Command
 {
     public function handle(): int
     {
-        if (! $this->input->isInteractive()) {
+        // Composer runs this during `composer setup` without a terminal (like in CI), where the
+        // prompts would answer with their defaults and fail, so treat that as non-interactive too.
+        $hasTerminal = (defined('STDIN') && stream_isatty(STDIN)) || $this->laravel->runningUnitTests();
+
+        if (! $this->input->isInteractive() || ! $hasTerminal) {
             $this->components->warn('Skipped setting up a login. Run `php artisan houston:install` to set one up.');
 
             return self::SUCCESS;
