@@ -8,8 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- Every metric of a repository has a page of its own: click a metric's name, or the icon next to a row in the Flow & review quality lists and on the workflow table's columns. It charts the metric across the period with its benchmark and timeline events, lists the value of each day, week or month, and for metrics that sum up one value per pull request, run or deploy, charts both the median and the average. CI metrics can be read over time there too.
-- Every metric on the repository and team reports has its own icon next to its name. The landing page's metric lists show the same icons and link to each metric's page for the first repository.
+- Every metric on the repository and team reports has its own icon next to its name. The landing page's metric lists show the same icons and link to the first repository's report.
 - Pick the timezone reports are shown in under Settings → Defaults. Reports use UTC until one is picked.
 - `HOUSTON_DEMO=true` runs Houston as a read-only public demo. Visitors can look around and switch layouts and views for themselves, but can't watch, remove or sync repositories, and settings are hidden. The scheduler keeps syncing the watched repositories, so the numbers stay up to date, but no visitor's request talks to GitHub.
 
