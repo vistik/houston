@@ -19,11 +19,14 @@ use App\Models\RepositorySync;
 use App\Models\SystemEvent;
 use App\Models\WorkflowRun;
 use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Concurrency;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
+use Throwable;
 
 /**
  * Pulls pull requests, reviews and workflow runs from GitHub into the local cache.
@@ -183,7 +186,7 @@ class RepositorySynchronizer
         // writes only its own columns; the phase column follows the pull requests, which take the longest.
         $id = $repository->id;
 
-        Concurrency::run([
+        Concurrency::run(array_map(self::returnsItsErrors(...), [
             static function () use ($id, $startedAt, $lookbackStart, $backfill): void {
                 [$repository, $state] = self::load($id);
 
@@ -202,7 +205,7 @@ class RepositorySynchronizer
 
                 app(DeploymentSynchronizer::class)->sync($repository, $state, $startedAt, $lookbackStart, $backfill);
             },
-        ], SyncRepository::MaxRuntimeSeconds);
+        ]), SyncRepository::MaxRuntimeSeconds);
 
         $state->refresh();
 
@@ -223,6 +226,31 @@ class RepositorySynchronizer
             'workflow_runs_fetched' => $state->workflow_runs_fetched,
             'backfill' => $backfill,
         ]);
+    }
+
+    /**
+     * A task's exception travels back from its process as JSON and is rebuilt from its constructor arguments.
+     * Many can't make that trip: an HTTP client exception comes back as a type error, and one that can't be
+     * encoded at all (a query exception whose bindings aren't valid UTF-8) as "Trying to access array offset
+     * on null". So anything but GitHub's own exceptions and the ones the sync job handles is reported where it happened and sent
+     * back as a plain one that carries just the message.
+     *
+     * @param  Closure(): void  $task
+     * @return Closure(): void
+     */
+    private static function returnsItsErrors(Closure $task): Closure
+    {
+        return static function () use ($task): void {
+            try {
+                $task();
+            } catch (GitHubException|SyncInProgressException $exception) {
+                throw $exception;
+            } catch (Throwable $exception) {
+                report($exception);
+
+                throw new RuntimeException(mb_scrub($exception::class.': '.$exception->getMessage()));
+            }
+        };
     }
 
     /**
