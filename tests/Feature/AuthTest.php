@@ -23,7 +23,9 @@ describe('with the login on but not created yet', function () {
         $this->get(route('landing.install'))
             ->assertOk()
             ->assertViewIs('landing.install')
-            ->assertSee('it has no login yet');
+            ->assertSee('it has no login yet')
+            // A self-hosted copy isn't necessarily on Laravel Cloud.
+            ->assertDontSee('Hosted on');
     });
 
     it('answers JSON requests from guests with a 401', function () {

@@ -51,6 +51,10 @@ describe('with the landing page on', function () {
             ->assertViewIs('landing.install');
     });
 
+    it('says the website is hosted on Laravel Cloud', function () {
+        $this->get(route('landing'))->assertOk()->assertSee('Hosted on')->assertSee('https://cloud.laravel.com', false);
+    });
+
     describe('and the login on', function () {
         beforeEach(function () {
             config(['houston.auth' => true]);

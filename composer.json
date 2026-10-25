@@ -24,7 +24,7 @@
         "source": "https://github.com/vistik/Houston"
     },
     "require": {
-        "php": "^8.5",
+        "php": "^8.5.12",
         "inertiajs/inertia-laravel": "^3.0",
         "laravel/framework": "^13.17",
         "laravel/mcp": "^1.1",
@@ -130,6 +130,9 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "platform": {
+            "php": "8.5.12"
         }
     },
     "minimum-stability": "stable"

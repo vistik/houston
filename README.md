@@ -1,22 +1,45 @@
 # Houston
 
+**Mission control for your engineering team.**
+
 Houston measures engineering velocity for GitHub repositories. It syncs pull requests, reviews, CI workflow runs and deployments into a local cache, then reports how work flows from the first commit to production.
 
-- **Pull request flow:** throughput, cycle time, lead time, pickup and review time, time to approval, merge delay, size, and how long a pull request waits on reviewers versus its author.
-- **Review quality:** unreviewed merges, changes requested, review rounds, rework, and how concentrated reviewing is.
-- **CI:** failure rates on the default branch and on pull requests, flaky and rerun rates, duration, queue time, and how long the default branch stays red.
-- **Delivery (DORA):** deploy frequency, lead time to production, change failure rate and time to restore. These come from GitHub Deployments, or from releases for repositories that don't deploy.
-- **Dependencies:** how many direct Composer and npm dependencies on the default branch are behind their latest stable release, and how many by a major version, compared with a month earlier.
-- **Teams:** the same pull request metrics across every watched repository, for the people on a team. Work counts for the team someone was on when they did it.
-- **Benchmarks:** rate each metric against DORA and LinearB benchmarks, or against your own targets.
-- **Wall:** a rotating full-screen view for an office TV.
-- **MCP server:** agents can read the reports, for example to write feedback on a sprint.
+![Houston's repository report for laravel/framework: time to merge, pickup and review time with ratings, where the time goes, and DORA delivery metrics](public/landing/screenshots/repo-report-dark.png)
 
-Durations that measure people only count working time, so a pull request opened on Friday evening doesn't look two days slower than one opened on Monday.
+- 🚀 **Pull request flow:** throughput, cycle time, lead time, pickup and review time, time to approval, merge delay, size, and how long a pull request waits on reviewers versus its author.
+- 🔍 **Review quality:** unreviewed merges, changes requested, review rounds, rework, and how concentrated reviewing is.
+- 🚦 **CI:** failure rates on the default branch and on pull requests, flaky and rerun rates, duration, queue time, and how long the default branch stays red.
+- 🛰️ **Delivery (DORA):** deploy frequency, lead time to production, change failure rate and time to restore. These come from GitHub Deployments, or from releases for repositories that don't deploy.
+- 📦 **Dependencies:** how many direct Composer and npm dependencies on the default branch are behind their latest stable release, and how many by a major version, compared with a month earlier.
+- 📍 **Events:** log a change, such as introducing AI code reviews, and compare the time since with the equally long stretch before it, on every trend chart.
+- 👩‍🚀 **Teams:** the same pull request metrics across every watched repository, for the people on a team. Work counts for the team someone was on when they did it.
+- 🎯 **Benchmarks:** rate each metric against DORA and LinearB benchmarks, or against your own targets.
+- 🖥️ **Wall:** a rotating full-screen view for an office TV.
+- 🤖 **MCP server:** agents can read the reports, for example to write feedback on a sprint.
+
+⏱️ Durations that measure people only count working time, so a pull request opened on Friday evening doesn't look two days slower than one opened on Monday.
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="public/landing/screenshots/repo-where-time-goes.png" alt="Where the time goes for laravel/framework, the time-to-merge distribution, and the four DORA metrics compared with the previous period"><br><sub><b>Where the time goes</b>, the time-to-merge distribution and DORA metrics against the previous period</sub></td>
+    <td width="50%"><img src="public/landing/screenshots/timeline-events.png" alt="Comparing the 61 days since introducing AI code reviews with the 61 days before, with the charts split at the event"><br><sub><b>Events:</b> the 61 days since introducing AI code reviews against the 61 days before</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="public/landing/screenshots/team-report.png" alt="The Space Engineers team report: time to merge, pickup and review time with ratings, and where the time goes, across every repository the team works in"><br><sub><b>Team report</b> across every repository the team works in</sub></td>
+    <td width="50%"><img src="public/landing/screenshots/benchmarks-settings.png" alt="Benchmark settings: elite, good and medium thresholds per metric, with LinearB and suggested standards"><br><sub><b>Benchmarks:</b> your own thresholds, or DORA, LinearB and suggested standards</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="public/landing/screenshots/wall-dark.png" alt="The wall display for laravel/framework over the last 14 days: headline metrics with trends and ratings, where the time goes and the pull requests waiting for review"><br><sub><b>Wall:</b> the rotating full-screen view for an office TV</sub></td>
+  </tr>
+</table>
+
+The screenshots use the demo data that ships with Houston.
 
 ## Requirements
 
-- PHP 8.5
+- PHP 8.5.12 or newer
 - Composer
 - Node 22 and npm
 - A GitHub token that can read the repositories you want to measure
@@ -26,8 +49,8 @@ Houston uses SQLite by default. Any database Laravel supports works.
 ## Installation
 
 ```bash
-git clone https://github.com/vistik/Houston.git
-cd Houston
+git clone https://github.com/vistik/houston.git
+cd houston
 composer setup
 ```
 
@@ -71,7 +94,7 @@ Start everything Houston needs in development with:
 composer run dev
 ```
 
-This starts the web server at `http://localhost:8000`, the scheduler, five queue workers so repositories sync side by side, a log tail and Vite.
+This starts the web server at `http://localhost:8000`, the scheduler, a queue worker, a log tail and Vite.
 
 #### Running in production
 
@@ -126,9 +149,10 @@ Everything Houston-specific lives in `config/houston.php`. These can be set from
 | `HOUSTON_WORKDAY_START` / `_END` | `00:00` / `24:00` | Working hours. Use all seven days and `00:00`–`24:00` to measure calendar time.                                         |
 | `HOUSTON_MCP_TOKEN`              | _empty_           | Enables the MCP endpoint at `/mcp` for clients that send this bearer token.                                             |
 | `HOUSTON_AUTH`                   | `true`            | Requires the login created by `php artisan houston:install` before showing anything.                                    |
+| `HOUSTON_LANDING`                | `false`           | Shows the Houston website at `/` and `/install`. The dashboard is at `/dashboard` either way.                           |
 | `HOUSTON_DEMO`                   | `false`           | Runs a read-only public demo. See [Running a public demo](#running-a-public-demo).                                      |
 
-To send errors to [Sentry](https://sentry.io), set `SENTRY_LARAVEL_DSN`. Leave it empty to turn Sentry off.
+To send errors to [Sentry](https://sentry.io), set `SENTRY_LARAVEL_DSN`. Leave it empty to turn Sentry off. `SENTRY_TRACES_SAMPLE_RATE` and `SENTRY_PROFILES_SAMPLE_RATE` control how much is traced and profiled (profiling needs the [Excimer](https://docs.sentry.io/platforms/php/profiling/#installation) extension), and adding `sentry_logs` to `LOG_STACK` sends logs too.
 
 The rate limit reserve, which deployment environments count as production, and which pull requests count as remediations (reverts, hotfixes and rollbacks) are set in `config/houston.php` itself.
 

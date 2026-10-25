@@ -15,6 +15,10 @@
       <p class="mt-4 max-w-sm text-sm leading-relaxed text-muted">Mission control for your GitHub repos. DORA and PR metrics, free, open source, self-hosted.</p>
       <p class="mt-4 font-mono text-xs text-muted">Failure is not an option. Change failure rate is a metric.</p>
       <p class="mt-2 font-mono text-xs text-muted">MIT licence · Made by Visti Kløft</p>
+      @if (config('houston.landing'))
+      {{-- Only the public website runs on Laravel Cloud; a self-hosted copy's install guide shares this footer. --}}
+      <p class="mt-2 font-mono text-xs text-muted">Hosted on <a href="https://cloud.laravel.com" class="rounded-md text-text underline decoration-border-strong underline-offset-2 transition-colors hover:text-primary">Laravel Cloud</a></p>
+      @endif
     </div>
     <nav aria-label="Footer" class="grid grid-cols-2 gap-8 text-sm md:col-span-7 md:grid-cols-3">
       @if (config('houston.landing'))
