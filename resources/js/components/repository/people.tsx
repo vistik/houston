@@ -23,6 +23,7 @@ export function ActiveDevelopers({
                 size="lg"
                 label="Active developers"
                 hint="Opened, merged or reviewed a PR"
+                icon="activeDevelopers"
                 metric={report.kpis.activeDevelopers}
             />
             <ChartPanel

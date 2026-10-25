@@ -382,6 +382,7 @@ function Report({
                         size="lg"
                         label="Time to merge"
                         hint="TTL · opened → merged, median"
+                        icon="cycleTime"
                         metric={kpis.cycleTime}
                     />
                     <MetricTile
@@ -389,6 +390,7 @@ function Report({
                         size="lg"
                         label="Pickup time"
                         hint="Ready → first response"
+                        icon="pickupTime"
                         metric={kpis.pickupTime}
                     />
                     <MetricTile
@@ -396,6 +398,7 @@ function Report({
                         size="lg"
                         label="Review time"
                         hint="First response → merged"
+                        icon="reviewTime"
                         metric={kpis.reviewTime}
                     />
                     <MetricTile
@@ -403,6 +406,7 @@ function Report({
                         size="lg"
                         label="Merged PRs"
                         hint={periodLabel}
+                        icon="throughput"
                         metric={kpis.throughput}
                     />
                     <MetricTile
@@ -410,6 +414,7 @@ function Report({
                         size="lg"
                         label="Lead time"
                         hint="First commit → merged"
+                        icon="leadTime"
                         metric={kpis.leadTime}
                     />
                     <MetricTile
@@ -417,6 +422,7 @@ function Report({
                         size="lg"
                         label="Open PRs"
                         hint="Right now"
+                        icon="openPullRequests"
                         metric={kpis.openPullRequests}
                         footer={
                             <div className="flex flex-wrap items-center gap-1.5">

@@ -38,6 +38,7 @@ export function ReviewView({
                         size="lg"
                         label="Pickup time"
                         hint="Ready → first response, median"
+                        icon="pickupTime"
                         metric={kpis.pickupTime}
                     />
                     <MetricTile
@@ -45,6 +46,7 @@ export function ReviewView({
                         size="lg"
                         label="Time to approval"
                         hint="Ready → approved, median"
+                        icon="timeToApproval"
                         metric={kpis.timeToApproval}
                     />
                     <MetricTile
@@ -52,6 +54,7 @@ export function ReviewView({
                         size="lg"
                         label="Review time"
                         hint="First response → merged, median"
+                        icon="reviewTime"
                         metric={kpis.reviewTime}
                     />
                     <MetricTile
@@ -59,6 +62,7 @@ export function ReviewView({
                         size="lg"
                         label="Review rounds"
                         hint="Per merged PR, average"
+                        icon="reviewRounds"
                         metric={kpis.reviewRounds}
                     />
                     <MetricTile
@@ -66,6 +70,7 @@ export function ReviewView({
                         size="lg"
                         label="Merged unreviewed"
                         hint="Share of merged PRs"
+                        icon="unreviewedMergeRate"
                         metric={kpis.unreviewedMergeRate}
                     />
                     <MetricTile
@@ -73,6 +78,7 @@ export function ReviewView({
                         size="lg"
                         label="Open PRs"
                         hint="Right now"
+                        icon="openPullRequests"
                         metric={kpis.openPullRequests}
                         footer={
                             (kpis.stalePullRequests.value ?? 0) > 0 ? (

@@ -34,6 +34,7 @@ export function DeliveryView({
                             releases ? 'Release frequency' : 'Deploy frequency'
                         }
                         hint={`${kpis.deployments.value ?? 0} ${releases ? 'releases' : 'deploys'} · ${periodLabel}`}
+                        icon="deployFrequency"
                         metric={kpis.deployFrequency}
                     />
                     <MetricTile
@@ -41,6 +42,7 @@ export function DeliveryView({
                         size="lg"
                         label="Lead time to production"
                         hint="First commit → shipped, median"
+                        icon="leadTimeToProduction"
                         metric={kpis.leadTimeToProduction}
                     />
                     <MetricTile
@@ -48,6 +50,7 @@ export function DeliveryView({
                         size="lg"
                         label="Change failure rate"
                         hint="Shipped changes that needed a fix"
+                        icon="changeFailureRate"
                         metric={kpis.changeFailureRate}
                     />
                     <MetricTile
@@ -55,6 +58,7 @@ export function DeliveryView({
                         size="lg"
                         label="Time to restore"
                         hint="Failed change → fix shipped, median"
+                        icon="timeToRestore"
                         metric={kpis.timeToRestore}
                     />
                     <MetricTile
@@ -62,6 +66,7 @@ export function DeliveryView({
                         size="lg"
                         label="Merged PRs"
                         hint={periodLabel}
+                        icon="throughput"
                         metric={kpis.throughput}
                     />
                     <MetricTile
@@ -69,6 +74,7 @@ export function DeliveryView({
                         size="lg"
                         label="Time to merge"
                         hint="Opened → merged, median"
+                        icon="cycleTime"
                         metric={kpis.cycleTime}
                     />
                 </Headline>

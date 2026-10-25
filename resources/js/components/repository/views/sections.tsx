@@ -22,16 +22,19 @@ export function CiHealth({
             <MetricTile
                 label={`Failure rate on ${defaultBranch ?? 'default branch'}`}
                 hint="Pushes to the default branch"
+                icon="ciDefaultBranchFailureRate"
                 metric={kpis.ciDefaultBranchFailureRate}
             />
             <MetricTile
                 label={`Time ${defaultBranch ?? 'default branch'} was red`}
                 hint="Share of working time"
+                icon="defaultBranchRedShare"
                 metric={kpis.defaultBranchRedShare}
             />
             <MetricTile
                 label="CI duration"
                 hint="Median per commit"
+                icon="ciDuration"
                 metric={kpis.ciDuration}
                 footer={
                     kpis.ciDurationP90.value !== null && (
@@ -52,6 +55,7 @@ export function CiHealth({
             <MetricTile
                 label="Time to recovery"
                 hint={`${defaultBranch ?? 'Default branch'} red → green, median`}
+                icon="ciRecoveryTime"
                 metric={kpis.ciRecoveryTime}
             />
             {/* The workflows table has too many columns to share a row, so the pipeline sits above it. */}
@@ -62,35 +66,41 @@ export function CiHealth({
                         key: 'queueTime',
                         label: 'Queue time',
                         hint: 'Waiting for a runner, median',
+                        icon: 'ciQueueTime',
                         metric: kpis.ciQueueTime,
                     },
                     {
                         key: 'flaky',
                         label: 'Flaky commits',
                         hint: 'Failed and passed on the same commit',
+                        icon: 'ciFlakyRate',
                         metric: kpis.ciFlakyRate,
                     },
                     {
                         key: 'pullRequestFailureRate',
                         label: 'PR build failure rate',
                         hint: 'pull_request runs',
+                        icon: 'ciPullRequestFailureRate',
                         metric: kpis.ciPullRequestFailureRate,
                     },
                     {
                         key: 'rerunRate',
                         label: 'Re-run rate',
                         hint: 'Runs retried at least once',
+                        icon: 'ciRerunRate',
                         metric: kpis.ciRerunRate,
                     },
                     {
                         key: 'runs',
                         label: 'Workflow runs',
+                        icon: 'ciRuns',
                         metric: kpis.ciRuns,
                     },
                     {
                         key: 'minutes',
                         label: 'CI minutes',
                         hint: 'Wall clock, all runs',
+                        icon: 'ciMinutes',
                         metric: kpis.ciMinutes,
                     },
                     // On the default branch the headline rate is the tile above, so only list it when it covers every branch.
@@ -99,6 +109,7 @@ export function CiHealth({
                               {
                                   key: 'failureRate',
                                   label: 'Overall failure rate',
+                                  icon: 'ciFailureRate' as const,
                                   metric: kpis.ciFailureRate,
                               },
                           ]
