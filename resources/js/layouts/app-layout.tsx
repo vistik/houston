@@ -1,8 +1,8 @@
 import { Link, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
-import { LogoMark } from '@/components/icons';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { WatchRepositoryButton } from '@/components/watch-repository';
+import { Wordmark } from '@/components/wordmark';
 import { cn } from '@/lib/utils';
 import { home, logout, settings } from '@/routes';
 import { index as repositories } from '@/routes/repositories';
@@ -34,12 +34,8 @@ export default function AppLayout({
             )}
             <header className="sticky top-0 z-20 border-b border-line bg-page/80 backdrop-blur-md">
                 <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4 sm:px-6">
-                    <Link
-                        href={home()}
-                        className="flex items-center gap-2 font-semibold tracking-tight"
-                    >
-                        <LogoMark />
-                        Houston
+                    <Link href={home()} className="shrink-0">
+                        <Wordmark />
                     </Link>
                     <div className="flex min-w-0 flex-1 items-center gap-3">
                         {nav}
