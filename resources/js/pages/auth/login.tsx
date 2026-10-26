@@ -1,7 +1,7 @@
 import { Form, Head } from '@inertiajs/react';
-import { LogoMark } from '@/components/icons';
 import { store } from '@/routes/login';
 import { buttonClass } from '@/components/ui/button';
+import { Wordmark } from '@/components/wordmark';
 
 const INPUT =
     'h-10 w-full rounded-lg border border-line bg-page px-3 text-sm placeholder:text-ink-muted focus:border-accent focus:ring-2 focus:ring-accent-soft focus:outline-none';
@@ -13,10 +13,7 @@ export default function Login() {
 
             <div className="w-full max-w-sm">
                 <div className="mb-6 flex flex-col items-center gap-2">
-                    <div className="flex items-center gap-2 font-semibold tracking-tight">
-                        <LogoMark />
-                        Houston
-                    </div>
+                    <Wordmark tagline={false} />
                     <p className="font-mono text-[11px] tracking-widest text-ink-muted uppercase">
                         Mission control · Authorized personnel only
                     </p>
