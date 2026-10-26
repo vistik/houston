@@ -23,6 +23,18 @@ it('seeds repositories, teams and the timeline events', function () {
         ]);
 });
 
+it('has a few jobs that are clearly the flakiest', function () {
+    $repository = Repository::query()->firstWhere('name', 'api');
+    $flaky = (new VelocityReport($repository, Period::lastDays(90, 'UTC')))->toArray()['flakyJobs'];
+
+    expect($flaky['jobs'][0]['name'])->toBe('browser (chrome)')
+        ->and($flaky['jobs'][0]['steps'][0]['name'])->toBe('Run browser tests')
+        ->and(collect($flaky['jobs'])->pluck('steps')->flatten(1)->where('setup', true))->not->toBeEmpty()
+        ->and($flaky['seconds'])->toBeGreaterThan(3600)
+        ->and($flaky['waitSeconds'])->toBeGreaterThan($flaky['seconds'])
+        ->and($flaky['pendingRuns'])->toBe(0);
+});
+
 it('makes introducing AI code reviews a clear improvement', function () {
     $event = TimelineEvent::query()->where('title', 'Introduced AI code reviews')->sole();
 

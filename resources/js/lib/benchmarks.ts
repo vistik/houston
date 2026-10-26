@@ -227,6 +227,24 @@ export const METRIC_GROUPS: {
                 unit: 'ratio',
                 better: 'lower',
             },
+            ciFlakyJobRuns: {
+                label: 'Flaky job runs',
+                hint: 'Failed, then passed on a re-run',
+                unit: 'count',
+                better: 'lower',
+            },
+            ciFlakyJobWait: {
+                label: 'Waiting on flaky jobs',
+                hint: 'Failed attempt → passing re-run',
+                unit: 'duration',
+                better: 'lower',
+            },
+            ciFlakyJobMinutes: {
+                label: 'CI lost to flaky jobs',
+                hint: 'Minutes of failed attempts',
+                unit: 'count',
+                better: 'lower',
+            },
             ciRerunRate: {
                 label: 'Re-run rate',
                 hint: 'Runs retried at least once',

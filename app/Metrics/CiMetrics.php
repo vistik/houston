@@ -2,14 +2,19 @@
 
 namespace App\Metrics;
 
+use App\Enums\WorkflowRunStatus;
+use App\Metrics\Ci\CiJob;
 use App\Metrics\Ci\CiWindow;
 use App\Models\Repository;
+use App\Models\WorkflowJob;
 use App\Models\WorkflowRun;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Collection;
 use LogicException;
+use stdClass;
 
 /**
  * CI signals from GitHub Actions workflow runs, computed in the database.
@@ -19,6 +24,8 @@ use LogicException;
  * finished in PHP, from small result sets.
  *
  * @phpstan-type Streak array{workflow_id: int, latest_name: string, last_run_at: CarbonImmutable, broken_at: CarbonImmutable|null, recovered_at: CarbonImmutable|null}
+ * @phpstan-type FlakyJob array{workflowId: int, workflow: string, name: string, runs: int, failures: int, seconds: int, waitSeconds: int, lastFailure: mixed}
+ * @phpstan-type FlakyJobSummary array{jobs: Collection<int, FlakyJob>, flaky: QueryBuilder, runs: int, seconds: int, waitSeconds: int, pendingRuns: int, fetchedRuns: int}
  */
 class CiMetrics
 {
@@ -30,8 +37,16 @@ class CiMetrics
     private ?Collection $streaks = null;
 
     /**
+     * Flaky jobs per window, by its start and end, as the metrics and the flakiest jobs both read them.
+     *
+     * @var array<string, FlakyJobSummary>
+     */
+    private array $flakyJobSummaries = [];
+
+    /**
      * @param  CarbonImmutable  $since  How far back runs are considered, e.g. the start of the previous period.
      * @param  CiFailureRateScope  $failureRateScope  Which runs the CI failure rate and its trend count.
+     * @param  CiJob|null  $job  One job to narrow the flaky-job metrics to.
      */
     public function __construct(
         private Repository $repository,
@@ -40,6 +55,7 @@ class CiMetrics
         private WorkingTime $time,
         private CarbonImmutable $now,
         private CiFailureRateScope $failureRateScope = CiFailureRateScope::DefaultBranch,
+        private ?CiJob $job = null,
     ) {}
 
     /**
@@ -58,6 +74,11 @@ class CiMetrics
             makeRecoveryTimes: fn (): Collection => $this->recoveryTimes($from, $to),
             makeFlakyRate: fn (): ?float => $this->flakyRate($from, $to),
             makeRedShare: fn (): ?float => $this->redShare($from, $to),
+            makeFlakyJobs: function () use ($from, $to): array {
+                $summary = $this->flakyJobSummary($from, $to);
+
+                return ['runs' => $summary['runs'], 'seconds' => $summary['seconds'], 'waitSeconds' => $summary['waitSeconds'], 'pendingRuns' => $summary['pendingRuns'], 'fetchedRuns' => $summary['fetchedRuns']];
+            },
         );
     }
 
@@ -156,6 +177,155 @@ class CiMetrics
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * The jobs that most often failed and then passed when their run was re-run in the period, with what
+     * they cost: the CI time of their failed attempts, and the working time from a failed attempt
+     * finishing to the re-run passing, while whoever pushed waited. Each job lists the steps its failed
+     * attempts failed in, most often first, flagging GitHub's own setup steps, which point at the runner
+     * or the network rather than the tests, and how many runs it was flaky in the period before.
+     *
+     * Alongside the flakiest jobs: how many jobs were flaky at all and what all of them cost, and how many
+     * re-runs in the period are still waiting for their jobs, so an empty list can be told from one that
+     * isn't known yet.
+     *
+     * @return array{jobs: list<array{workflowId: int, workflow: string, name: string, runs: int, previousRuns: int, failures: int, seconds: int, waitSeconds: int, steps: list<array{name: string, failures: int, setup: bool}>, url: string|null}>, count: int, seconds: int, waitSeconds: int, pendingRuns: int}
+     */
+    public function flakyJobs(Period $period, int $limit = 5): array
+    {
+        $summary = $this->flakyJobSummary($period->from, $period->to);
+        $previous = $this->flakyJobSummary($period->previousFrom, $period->from)['jobs']->keyBy(self::flakyJobKey(...));
+        $top = $summary['jobs']->take($limit);
+
+        $steps = $this->repository->getConnection()->query()
+            ->fromSub($summary['flaky'], 'flaky')
+            ->join('workflow_jobs', fn (JoinClause $join) => $join->on('workflow_jobs.workflow_run_id', '=', 'flaky.run_id')->on('workflow_jobs.name', '=', 'flaky.name'))
+            ->whereRaw(WorkflowJob::FailedCondition)
+            ->whereNotNull('workflow_jobs.failed_step')
+            ->select(['flaky.workflow_id', 'flaky.name', 'workflow_jobs.failed_step'])
+            ->selectRaw('count(*) as failures')
+            ->groupBy('flaky.workflow_id', 'flaky.name', 'workflow_jobs.failed_step')
+            ->get()
+            ->groupBy(fn (stdClass $step): string => "{$step->workflow_id}:{$step->name}");
+
+        $urls = WorkflowJob::query()
+            ->whereIn('github_id', $top->pluck('lastFailure'))
+            ->pluck('url', 'github_id');
+
+        return [
+            'jobs' => array_values($top->map(fn (array $job): array => [
+                'workflowId' => $job['workflowId'],
+                'workflow' => $job['workflow'],
+                'name' => $job['name'],
+                'runs' => $job['runs'],
+                'previousRuns' => $previous->get(self::flakyJobKey($job))['runs'] ?? 0,
+                'failures' => $job['failures'],
+                'seconds' => $job['seconds'],
+                'waitSeconds' => $job['waitSeconds'],
+                'steps' => array_values($steps->get(self::flakyJobKey($job), collect())
+                    ->sortBy([['failures', 'desc'], ['failed_step', 'asc']])
+                    ->map(fn (stdClass $step): array => [
+                        'name' => (string) $step->failed_step,
+                        'failures' => (int) $step->failures,
+                        'setup' => WorkflowJob::isSetupStep((string) $step->failed_step),
+                    ])
+                    ->all()),
+                'url' => isset($urls[$job['lastFailure']]) ? (string) $urls[$job['lastFailure']] : null,
+            ])->all()),
+            'count' => $summary['jobs']->count(),
+            'seconds' => $summary['seconds'],
+            'waitSeconds' => $summary['waitSeconds'],
+            'pendingRuns' => $summary['pendingRuns'],
+        ];
+    }
+
+    /**
+     * Every job that failed and then passed on a re-run within a window, flakiest first, or only the job
+     * the metrics are narrowed to. Jobs are told apart by workflow and name, so each leg of a matrix
+     * counts on its own. Runs where several jobs were flaky are waited on once in the total. Excluded
+     * workflows are left out.
+     *
+     * @return FlakyJobSummary
+     */
+    private function flakyJobSummary(CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        $key = $from->getTimestamp().':'.$to->getTimestamp();
+
+        if (isset($this->flakyJobSummaries[$key])) {
+            return $this->flakyJobSummaries[$key];
+        }
+
+        $failed = WorkflowJob::FailedCondition;
+        $passed = WorkflowJob::PassedCondition;
+
+        // One row per run and job that failed on one attempt and passed on a later one.
+        $flaky = $this->runs($from, $to)
+            ->join('workflow_jobs', 'workflow_jobs.workflow_run_id', '=', 'workflow_runs.id')
+            ->when($this->job, fn (Builder $query, CiJob $job) => $query->where('workflow_runs.workflow_id', $job->workflowId)->where('workflow_jobs.name', $job->name))
+            ->toBase()
+            ->select(['workflow_runs.workflow_id', 'workflow_jobs.name'])
+            ->selectRaw(implode(', ', [
+                'workflow_runs.id as run_id',
+                'max(workflow_runs.name) as workflow',
+                "sum(case when {$failed} then 1 else 0 end) as failures",
+                "coalesce(sum(case when {$failed} then workflow_jobs.duration_seconds end), 0) as seconds",
+                "max(case when {$failed} then workflow_jobs.github_id end) as last_failure",
+                "min(case when {$failed} then workflow_jobs.completed_at end) as failed_at",
+                "max(case when {$passed} then workflow_jobs.completed_at end) as passed_at",
+            ]))
+            ->groupBy('workflow_runs.id', 'workflow_runs.workflow_id', 'workflow_jobs.name')
+            ->havingRaw("max(case when {$passed} then workflow_jobs.run_attempt end) > min(case when {$failed} then workflow_jobs.run_attempt end)");
+
+        $runs = $this->repository->getConnection()->query()->fromSub($flaky, 'flaky')->get();
+        $waited = function (Collection $runs): int {
+            $failedAt = $runs->pluck('failed_at')->filter()->min();
+            $passedAt = $runs->pluck('passed_at')->filter()->max();
+
+            return $failedAt === null || $passedAt === null ? 0 : $this->time->between(CarbonImmutable::parse($failedAt), CarbonImmutable::parse($passedAt));
+        };
+
+        $jobs = $runs->groupBy(fn (stdClass $run): string => "{$run->workflow_id}:{$run->name}")
+            ->map(fn (Collection $runs): array => [
+                'workflowId' => (int) $runs->first()->workflow_id,
+                'workflow' => (string) $runs->max('workflow'),
+                'name' => (string) $runs->first()->name,
+                'runs' => $runs->count(),
+                'failures' => (int) $runs->sum('failures'),
+                'seconds' => (int) $runs->sum('seconds'),
+                'waitSeconds' => (int) $runs->sum(fn (stdClass $run): int => $waited(collect([$run]))),
+                'lastFailure' => $runs->max('last_failure'),
+            ])
+            ->sortBy([['runs', 'desc'], ['seconds', 'desc'], ['name', 'asc']])
+            ->values();
+
+        // Re-runs are only known to be fetched once their latest attempt's jobs are.
+        $reruns = $this->runs($from, $to)
+            ->where('status', WorkflowRunStatus::Completed)
+            ->where('run_attempt', '>', 1)
+            // A job's name is only known once its run's jobs are, so a job only narrows to its workflow here.
+            ->when($this->job, fn (Builder $query, CiJob $job) => $query->where('workflow_id', $job->workflowId))
+            ->toBase()
+            ->selectRaw('coalesce(sum(case when jobs_attempt >= run_attempt then 1 else 0 end), 0) as fetched, coalesce(sum(case when jobs_attempt is null or jobs_attempt < run_attempt then 1 else 0 end), 0) as pending')
+            ->first();
+
+        return $this->flakyJobSummaries[$key] = [
+            'jobs' => $jobs,
+            'flaky' => $flaky,
+            'runs' => $runs->count(),
+            'seconds' => (int) $jobs->sum('seconds'),
+            'waitSeconds' => (int) $runs->groupBy('run_id')->sum($waited),
+            'pendingRuns' => (int) $reruns->pending,
+            'fetchedRuns' => (int) $reruns->fetched,
+        ];
+    }
+
+    /**
+     * @param  array{workflowId: int, name: string}  $job
+     */
+    private static function flakyJobKey(array $job): string
+    {
+        return "{$job['workflowId']}:{$job['name']}";
     }
 
     /**

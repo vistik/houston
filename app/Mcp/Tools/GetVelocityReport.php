@@ -13,7 +13,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('Get the full velocity report for one repository: every KPI with its previous-period value, cycle time breakdown by stage, cycle time and size distributions, trend buckets, work in progress, CI workflows, slowest merged pull requests, default branch status, DORA delivery metrics, remediations and the bot backlog.')]
+#[Description('Get the full velocity report for one repository: every KPI with its previous-period value, cycle time breakdown by stage, cycle time and size distributions, trend buckets, work in progress, CI workflows, the flakiest CI jobs (failed, then passed on a re-run) and the CI time they cost, slowest merged pull requests, default branch status, DORA delivery metrics, remediations and the bot backlog.')]
 class GetVelocityReport extends Tool
 {
     use ReadsRepositories;

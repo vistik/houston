@@ -13,6 +13,7 @@ use App\Models\PullRequest;
 use App\Models\PullRequestActivity;
 use App\Models\PullRequestReview;
 use App\Models\Repository;
+use App\Models\WorkflowJob;
 use App\Models\WorkflowRun;
 use App\Reports\VelocityReport;
 use Carbon\CarbonImmutable;
@@ -496,6 +497,121 @@ it('measures CI queue time, flakiness and how long the default branch was red', 
         // The period runs from midnight six days ago until noon today.
         ->and($kpis['defaultBranchRedShare']['value'])->toEqual((6 * 3600 + 300) / (6.5 * 86400));
 });
+
+it('ranks the jobs that failed and then passed on a re-run by how often, with what they cost', function () {
+    $factory = WorkflowRun::factory()->for($this->repository);
+    $job = function (WorkflowRun $run, string $name, int $attempt, string $conclusion, int $minutes = 5, int $doneAfter = 0, ?string $step = null): void {
+        static $id = 1;
+
+        WorkflowJob::create([
+            'workflow_run_id' => $run->id, 'github_id' => $id, 'name' => $name, 'run_attempt' => $attempt, 'conclusion' => $conclusion,
+            'url' => "https://github.com/acme/app/actions/runs/{$run->github_id}/job/{$id}", 'duration_seconds' => $minutes * 60,
+            'completed_at' => $run->created_at->addMinutes($doneAfter), 'failed_step' => $step,
+        ]);
+
+        $id++;
+    };
+
+    // "browser" failed twice before passing on the third attempt, 50 minutes after it first failed.
+    $first = $factory->at(CarbonImmutable::parse('2026-10-05 10:00'))->create(['run_attempt' => 3, 'jobs_attempt' => 3]);
+    $job($first, 'browser', 1, 'failure', 10, 10, 'Run browser tests');
+    $job($first, 'browser', 2, 'timed_out', 12, 40, 'Run actions/checkout@v4');
+    $job($first, 'browser', 3, 'success', doneAfter: 60);
+    $job($first, 'unit', 1, 'success', doneAfter: 5);
+
+    // Both were flaky in the same run, which kept whoever pushed waiting from 09:03 until 09:35.
+    $second = $factory->at(CarbonImmutable::parse('2026-10-06 09:00'))->create(['run_attempt' => 2, 'jobs_attempt' => 2]);
+    $job($second, 'browser', 1, 'failure', 8, 8, 'Run browser tests');
+    $job($second, 'browser', 2, 'success', doneAfter: 30);
+    $job($second, 'unit', 1, 'failure', 3, 3, 'Run tests');
+    $job($second, 'unit', 2, 'success', doneAfter: 35);
+
+    // Failing for good isn't flaky, and neither is a job cancelled when another failed.
+    $broken = $factory->failed()->at($this->now->subHours(3))->create(['run_attempt' => 2, 'jobs_attempt' => 2]);
+    $job($broken, 'lint', 1, 'failure');
+    $job($broken, 'lint', 2, 'failure');
+    $job($broken, 'unit', 1, 'cancelled');
+    $job($broken, 'unit', 2, 'success');
+
+    // The week before, "browser" was flaky once and took 20 minutes to get past.
+    $before = $factory->at(CarbonImmutable::parse('2026-09-28 10:00'))->create(['run_attempt' => 2, 'jobs_attempt' => 2]);
+    $job($before, 'browser', 1, 'failure', 6, 6, 'Run browser tests');
+    $job($before, 'browser', 2, 'success', doneAfter: 26);
+
+    // A re-run whose jobs haven't been fetched yet, and an excluded workflow.
+    $factory->at($this->now->subHours(3))->create(['run_attempt' => 2]);
+    $label = $factory->at($this->now->subHours(3))->create(['workflow_id' => 9, 'run_attempt' => 2, 'jobs_attempt' => 2]);
+    $job($label, 'label', 1, 'failure');
+    $job($label, 'label', 2, 'success');
+    $this->repository->update(['excluded_workflow_ids' => [9]]);
+
+    $flaky = velocityReport($this->repository)['flakyJobs'];
+
+    expect($flaky['jobs'])->toBe([
+        [
+            'workflowId' => 1, 'workflow' => 'tests', 'name' => 'browser', 'runs' => 2, 'previousRuns' => 1, 'failures' => 3, 'seconds' => 30 * 60, 'waitSeconds' => 72 * 60,
+            'steps' => [
+                ['name' => 'Run browser tests', 'failures' => 2, 'setup' => false],
+                ['name' => 'Run actions/checkout@v4', 'failures' => 1, 'setup' => true],
+            ],
+            'url' => "https://github.com/acme/app/actions/runs/{$second->github_id}/job/5",
+        ],
+        [
+            'workflowId' => 1, 'workflow' => 'tests', 'name' => 'unit', 'runs' => 1, 'previousRuns' => 0, 'failures' => 1, 'seconds' => 3 * 60, 'waitSeconds' => 32 * 60,
+            'steps' => [['name' => 'Run tests', 'failures' => 1, 'setup' => false]],
+            'url' => "https://github.com/acme/app/actions/runs/{$second->github_id}/job/7",
+        ],
+    ])
+        ->and($flaky['count'])->toBe(2)
+        ->and($flaky['seconds'])->toBe(33 * 60)
+        ->and($flaky['waitSeconds'])->toBe((50 + 32) * 60)
+        ->and($flaky['pendingRuns'])->toBe(1);
+});
+
+it('compares the cost of flaky jobs with the period before', function () {
+    $run = WorkflowRun::factory()->for($this->repository);
+    $flaky = function (CarbonImmutable $at, int $minutes, int $waited) use ($run): void {
+        $rerun = $run->at($at)->create(['run_attempt' => 2, 'jobs_attempt' => 2]);
+
+        WorkflowJob::create(['workflow_run_id' => $rerun->id, 'github_id' => $rerun->id * 10, 'name' => 'browser', 'run_attempt' => 1, 'conclusion' => 'failure', 'url' => 'https://github.com', 'duration_seconds' => $minutes * 60, 'completed_at' => $at]);
+        WorkflowJob::create(['workflow_run_id' => $rerun->id, 'github_id' => $rerun->id * 10 + 1, 'name' => 'browser', 'run_attempt' => 2, 'conclusion' => 'success', 'url' => 'https://github.com', 'completed_at' => $at->addMinutes($waited)]);
+    };
+
+    $flaky(CarbonImmutable::parse('2026-10-06 10:00'), minutes: 10, waited: 45);
+    $flaky(CarbonImmutable::parse('2026-09-29 10:00'), minutes: 4, waited: 15);
+    $flaky(CarbonImmutable::parse('2026-09-30 10:00'), minutes: 6, waited: 15);
+
+    $kpis = velocityReport($this->repository)['kpis'];
+
+    expect($kpis['ciFlakyJobWait'])->toMatchArray(['value' => 45 * 60, 'previous' => 30 * 60, 'unit' => 'duration', 'better' => 'lower'])
+        ->and($kpis['ciFlakyJobMinutes'])->toMatchArray(['value' => 10, 'previous' => 10, 'unit' => 'count']);
+});
+
+it('leaves the cost of flaky jobs unknown until a re-run has its jobs fetched', function () {
+    WorkflowRun::factory()->for($this->repository)->at($this->now->subDay())->create(['run_attempt' => 2]);
+    WorkflowRun::factory()->for($this->repository)->at($this->now->subDays(9))->create();
+
+    $kpis = velocityReport($this->repository)['kpis'];
+
+    expect($kpis['ciFlakyJobWait']['value'])->toBeNull()
+        ->and($kpis['ciFlakyJobMinutes']['value'])->toBeNull()
+        // Without any re-runs, nothing was flaky.
+        ->and($kpis['ciFlakyJobWait']['previous'])->toBe(0);
+});
+
+it('tells GitHub setup steps from the steps a workflow runs itself', function (string $step, bool $setup) {
+    expect(WorkflowJob::isSetupStep($step))->toBe($setup);
+})->with([
+    ['Set up job', true],
+    ['Initialize containers', true],
+    ['Run actions/checkout@v4', true],
+    ['Post Run actions/cache@v4', true],
+    ['Run shivammathur/setup-php@v2', true],
+    ['Run pnpm/action-setup@v4', true],
+    ['Run cypress-io/github-action@v6', false],
+    ['Run browser tests', false],
+    ['Checkout', false],
+]);
 
 it('flags reverts and hotfixes and tracks the bot backlog separately', function () {
     PullRequest::factory()->for($this->repository)->lifecycle($this->now->subDays(2), mergedAfter: 1)->create(['title' => 'Revert "Add feature"']);

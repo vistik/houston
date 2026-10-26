@@ -3,6 +3,7 @@
 namespace App\Reports;
 
 use App\Metrics\Benchmarks;
+use App\Metrics\Ci\CiJob;
 use App\Metrics\CiFailureRateScope;
 use App\Metrics\Granularity;
 use App\Metrics\Metrics;
@@ -40,7 +41,7 @@ class ReportCache
      * Bump this when a report gains, loses or changes a field, so reports cached before the change are
      * rebuilt instead of served without it until the repository syncs again.
      */
-    private const int Format = 10;
+    private const int Format = 11;
 
     public function __construct(private Benchmarks $benchmarks) {}
 
@@ -151,6 +152,29 @@ class ReportCache
             $this->repositoryVersion($repository, $period, $scope),
             fn (): array => (new VelocityReport($repository, $period, $includeBots, ciFailureRateScope: $scope))->metricSeries($key),
         );
+    }
+
+    /**
+     * A flaky-job metric narrowed to one job: its headline numbers and its value per trend bucket. Not
+     * rated against the repository's benchmarks, which are set for every job together.
+     *
+     * @return array{kpi: array<string, mixed>, values: list<float|int|null>}
+     */
+    public function jobMetric(Repository $repository, Period $period, string $key, CiJob $job): array
+    {
+        $scope = CiFailureRateScope::current();
+
+        $metric = $this->cached(
+            "houston:report:job-metric:{$key}:{$repository->id}:{$period->key()}:{$job->key()}",
+            $this->repositoryVersion($repository, $period, $scope),
+            function () use ($repository, $period, $key, $job, $scope): array {
+                $report = new VelocityReport($repository, $period, ciFailureRateScope: $scope, job: $job);
+
+                return ['kpi' => $report->metric($key), 'values' => $report->metricSeries($key)['values']];
+            },
+        );
+
+        return ['kpi' => Metrics::describe(['kpis' => [$key => $metric['kpi']]])['kpis'][$key], 'values' => $metric['values']];
     }
 
     /**

@@ -48,6 +48,9 @@ final class Metrics
         Ci\CiRecoveryTime::class,
         Ci\CiQueueTime::class,
         Ci\CiFlakyRate::class,
+        Ci\CiFlakyJobRuns::class,
+        Ci\CiFlakyJobWait::class,
+        Ci\CiFlakyJobMinutes::class,
         Ci\DefaultBranchRedShare::class,
 
         // Delivery.

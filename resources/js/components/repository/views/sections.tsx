@@ -1,5 +1,6 @@
 import { BenchmarkBadge } from '@/components/metric-card';
 import { Dependencies } from '@/components/repository/dependencies';
+import { FlakyJobs } from '@/components/repository/flaky-jobs';
 import { WorkflowsTable } from '@/components/repository/workflows-table';
 import { Cell } from '@/components/report/grid';
 import { MetricList, MetricTile, Section } from '@/components/report/widgets';
@@ -77,6 +78,27 @@ export function CiHealth({
                         metric: kpis.ciFlakyRate,
                     },
                     {
+                        key: 'flakyJobRuns',
+                        label: 'Flaky job runs',
+                        hint: 'Failed, then passed on a re-run',
+                        icon: 'ciFlakyJobRuns',
+                        metric: kpis.ciFlakyJobRuns,
+                    },
+                    {
+                        key: 'flakyJobWait',
+                        label: 'Waiting on flaky jobs',
+                        hint: 'Failed attempt → passing re-run',
+                        icon: 'ciFlakyJobWait',
+                        metric: kpis.ciFlakyJobWait,
+                    },
+                    {
+                        key: 'flakyJobMinutes',
+                        label: 'CI lost to flaky jobs',
+                        hint: 'Minutes of failed attempts',
+                        icon: 'ciFlakyJobMinutes',
+                        metric: kpis.ciFlakyJobMinutes,
+                    },
+                    {
                         key: 'pullRequestFailureRate',
                         label: 'PR build failure rate',
                         hint: 'pull_request runs',
@@ -116,6 +138,9 @@ export function CiHealth({
                         : []),
                 ]}
             />
+            <Cell>
+                <FlakyJobs flakyJobs={report.flakyJobs} kpis={report.kpis} />
+            </Cell>
             <Cell>
                 <WorkflowsTable
                     workflows={report.workflows}

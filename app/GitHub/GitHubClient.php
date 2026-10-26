@@ -200,6 +200,52 @@ class GitHubClient
     }
 
     /**
+     * Perform the same GET request against several REST paths concurrently, preserving order. Paths
+     * GitHub no longer has, such as deleted runs, come back as null.
+     *
+     * @param  list<string>  $paths
+     * @param  array<string, mixed>  $query
+     * @param  int<1, max>  $concurrency
+     * @return list<array<string, mixed>|null>
+     *
+     * @throws RateLimitedException
+     */
+    public function getEach(array $paths, array $query = [], int $concurrency = 6): array
+    {
+        $this->ensureNotRateLimited(RateLimitResource::Core);
+
+        $responses = Http::pool(
+            fn (Pool $pool): array => array_map(
+                fn (string $path) => $this->configure($pool->asJson())->get(ltrim($path, '/'), $query),
+                $paths,
+            ),
+            concurrency: $concurrency,
+        );
+
+        return array_map(function (int $index) use ($responses, $paths, $query): ?array {
+            $response = $responses[$index] ?? null;
+
+            if ($response instanceof Response) {
+                $this->rateLimits->record($response);
+
+                if ($response->successful()) {
+                    return $response->json() ?? [];
+                }
+
+                if ($response->notFound()) {
+                    return null;
+                }
+            }
+
+            $this->ensureNotRateLimited(RateLimitResource::Core);
+
+            $response = $this->inspect(RateLimitResource::Core, $this->request()->get(ltrim($paths[$index], '/'), $query));
+
+            return $response->notFound() ? null : ($response->throw()->json() ?? []);
+        }, array_keys($paths));
+    }
+
+    /**
      * @throws RateLimitedException
      */
     private function ensureNotRateLimited(RateLimitResource $resource): void

@@ -200,14 +200,14 @@
         <div class="lg:col-span-7">
           @include('landing.partials.feature-eyebrow', ['feature' => App\Enums\LandingFeature::Metrics, 'text' => 'Telemetry'])
           <h2 id="metrics-title" class="mt-4 font-display text-3xl font-semibold leading-tight tracking-tight text-balance text-text sm:text-4xl">
-            43 readouts from the pull requests, reviews and CI runs you already have.
+            46 readouts from the pull requests, reviews and CI runs you already have.
           </h2>
           <p class="mt-5 max-w-2xl text-base leading-relaxed text-muted">
             Grouped the way the report reads, from how long a PR waits on the pad to how often production needs an abort. Every metric carries a plain-words note on how it is calculated.
           </p>
         </div>
         <dl class="grid grid-cols-3 gap-4 border-t border-border pt-6 lg:col-span-5 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-10">
-          <div><dt class="sr-only">Metrics</dt><dd class="font-display text-3xl font-semibold tracking-tight text-text">43</dd><dd class="mt-1 text-xs text-muted">metrics</dd></div>
+          <div><dt class="sr-only">Metrics</dt><dd class="font-display text-3xl font-semibold tracking-tight text-text">46</dd><dd class="mt-1 text-xs text-muted">metrics</dd></div>
           <div><dt class="sr-only">Metric groups</dt><dd class="font-display text-3xl font-semibold tracking-tight text-text">5</dd><dd class="mt-1 text-xs text-muted">groups</dd></div>
           <div><dt class="sr-only">Built-in benchmark standards</dt><dd class="font-display text-3xl font-semibold tracking-tight text-text">31</dd><dd class="mt-1 text-xs text-muted">benchmark standards</dd></div>
         </dl>
@@ -255,7 +255,7 @@
         <li class="flex flex-col rounded-2xl border border-border bg-surface p-6">
           <div class="flex items-baseline justify-between gap-4">
             <h3 class="font-display text-lg font-semibold tracking-tight text-text">CI health</h3>
-            <span class="font-mono text-xs text-muted">12 metrics</span>
+            <span class="font-mono text-xs text-muted">15 metrics</span>
           </div>
           <ul class="mt-4 flex flex-wrap gap-2 font-mono text-xs text-text">
             @include('landing.partials.metric-chip', ['metric' => 'ciFailureRate', 'label' => 'CI failure rate'])
@@ -267,6 +267,9 @@
             @include('landing.partials.metric-chip', ['metric' => 'ciRecoveryTime', 'label' => 'Time to recovery'])
             @include('landing.partials.metric-chip', ['metric' => 'ciQueueTime', 'label' => 'Queue time'])
             @include('landing.partials.metric-chip', ['metric' => 'ciFlakyRate', 'label' => 'Flaky commits'])
+            @include('landing.partials.metric-chip', ['metric' => 'ciFlakyJobRuns', 'label' => 'Flaky job runs'])
+            @include('landing.partials.metric-chip', ['metric' => 'ciFlakyJobWait', 'label' => 'Waiting on flaky jobs'])
+            @include('landing.partials.metric-chip', ['metric' => 'ciFlakyJobMinutes', 'label' => 'CI lost to flaky jobs'])
             @include('landing.partials.metric-chip', ['metric' => 'ciRerunRate', 'label' => 'Re-run rate'])
             @include('landing.partials.metric-chip', ['metric' => 'ciRuns', 'label' => 'Workflow runs'])
             @include('landing.partials.metric-chip', ['metric' => 'ciMinutes', 'label' => 'CI minutes'])

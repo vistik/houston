@@ -17,6 +17,7 @@ use App\Jobs\WarmReportCache;
 use App\Models\Repository;
 use App\Models\RepositorySync;
 use App\Models\SystemEvent;
+use App\Models\WorkflowJob;
 use App\Models\WorkflowRun;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -758,8 +759,104 @@ class RepositorySynchronizer
         $state->update(['workflow_runs_from' => $from, 'workflow_runs_reached_at' => $from]);
 
         $this->fetchRunWindows($repository, $state, $this->runWindows($repository, $from, $startedAt));
+        $this->syncWorkflowJobs($repository, $lookbackStart);
 
         $state->update(['workflow_runs_synced_at' => $startedAt]);
+    }
+
+    /**
+     * Fetch the jobs of every attempt of the re-run runs within the lookback, to find the jobs that
+     * failed and then passed on a re-run. Runs that were never re-run are left out, as none of their
+     * jobs can have, and a run is only fetched again once it was re-run since.
+     */
+    private function syncWorkflowJobs(Repository $repository, CarbonImmutable $lookbackStart): void
+    {
+        $pending = $repository->workflowRuns()
+            ->where('created_at', '>=', $lookbackStart)
+            ->where('status', WorkflowRunStatus::Completed)
+            ->where('run_attempt', '>', 1)
+            ->where(fn ($query) => $query->whereNull('jobs_attempt')->orWhereColumn('jobs_attempt', '<', 'run_attempt'))
+            ->orderBy('id')
+            ->get(['id', 'github_id', 'run_attempt', 'url']);
+
+        foreach ($pending->chunk(2 * self::RestConcurrency) as $batch) {
+            $batch = $batch->values();
+            $paths = array_values($batch->map(fn (WorkflowRun $run): string => $this->runsPath($repository)."/{$run->github_id}/jobs")->all());
+            $query = ['filter' => 'all', 'per_page' => 100];
+
+            foreach ($this->github->getEach($paths, $query, self::RestConcurrency) as $index => $page) {
+                $run = $batch[$index];
+                $jobs = $this->jobsOf($page);
+
+                // Runs with more jobs than a page holds, such as wide matrices, are rare enough to page through one
+                // by one, up to a thousand jobs.
+                for ($number = 2; $page !== null && count($jobs) < (int) ($page['total_count'] ?? 0) && $number <= 10; $number++) {
+                    $jobs = [...$jobs, ...$this->jobsOf($this->github->get($paths[$index], [...$query, 'page' => $number]))];
+                }
+
+                DB::transaction(function () use ($run, $jobs): void {
+                    if ($jobs !== []) {
+                        WorkflowJob::upsert(array_map(fn (array $job): array => $this->workflowJobRow($run, $job), $jobs), ['workflow_run_id', 'github_id']);
+                    }
+
+                    $run->update(['jobs_attempt' => $run->run_attempt]);
+                });
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $page
+     * @return list<array<string, mixed>>
+     */
+    private function jobsOf(?array $page): array
+    {
+        return is_array($page['jobs'] ?? null) ? array_values(array_filter($page['jobs'], is_array(...))) : [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $job
+     * @return array<string, mixed>
+     */
+    private function workflowJobRow(WorkflowRun $run, array $job): array
+    {
+        $startedAt = isset($job['started_at']) ? CarbonImmutable::parse($job['started_at']) : null;
+        $completedAt = isset($job['completed_at']) ? CarbonImmutable::parse($job['completed_at']) : null;
+
+        return [
+            'workflow_run_id' => $run->id,
+            'github_id' => $job['id'],
+            'name' => str($job['name'] ?? 'Job')->limit(250)->toString(),
+            'run_attempt' => $job['run_attempt'] ?? 1,
+            'conclusion' => WorkflowRunConclusion::fromGitHub($job['conclusion'] ?? null)?->value,
+            'url' => $job['html_url'] ?? $run->url,
+            'started_at' => $startedAt,
+            'completed_at' => $completedAt,
+            'duration_seconds' => WorkflowRun::durationBetween($startedAt, $completedAt),
+            'failed_step' => $this->failedStep($job),
+        ];
+    }
+
+    /**
+     * The first step a job failed in. A job that timed out has its running step cancelled instead.
+     *
+     * @param  array<string, mixed>  $job
+     */
+    private function failedStep(array $job): ?string
+    {
+        if (! in_array($job['conclusion'] ?? null, [WorkflowRunConclusion::Failure->value, WorkflowRunConclusion::TimedOut->value], true)) {
+            return null;
+        }
+
+        $steps = is_array($job['steps'] ?? null) ? array_filter($job['steps'], is_array(...)) : [];
+
+        foreach ($steps as $step) {
+            if (in_array($step['conclusion'] ?? null, ['failure', 'timed_out', 'cancelled'], true) && is_string($step['name'] ?? null)) {
+                return str($step['name'])->limit(250)->toString();
+            }
+        }
+
+        return null;
     }
 
     /**

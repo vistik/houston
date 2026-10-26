@@ -2,6 +2,7 @@
 
 use App\Models\PullRequest;
 use App\Models\Repository;
+use App\Models\WorkflowJob;
 use App\Models\WorkflowRun;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -68,6 +69,42 @@ it('breaks a CI metric down per bucket, which the full report leaves out', funct
         ->assertInertia(fn (Assert $page) => $page
             ->has('report.values', 7)
             ->where('report.values', fn ($values) => collect($values)->filter()->sort()->values()->all() === [300, 600]));
+});
+
+it('narrows a flaky-job metric to one job', function () {
+    $this->travelTo('2026-10-21 12:00:00');
+    $flaky = function (string $job, int $workflowId = 1) {
+        $run = WorkflowRun::factory()->for($this->repository)->at(now()->toImmutable()->subDays(2))->create(['workflow_id' => $workflowId, 'run_attempt' => 2, 'jobs_attempt' => 2]);
+
+        foreach ([1 => 'failure', 2 => 'success'] as $attempt => $conclusion) {
+            WorkflowJob::create(['workflow_run_id' => $run->id, 'github_id' => $run->id * 10 + $attempt, 'name' => $job, 'run_attempt' => $attempt, 'conclusion' => $conclusion, 'url' => 'https://github.com']);
+        }
+    };
+
+    $flaky('browser');
+    $flaky('browser');
+    $flaky('unit');
+    // The same job name in another workflow is another job.
+    $flaky('browser', workflowId: 2);
+
+    $page = fn (array $query) => $this->get(route('repositories.metric', ['owner' => 'acme', 'name' => 'app', 'metric' => 'ciFlakyJobRuns', 'days' => 7, 'complete' => 0, ...$query]))->assertOk();
+
+    $page(['workflow' => 1, 'job' => 'browser'])->assertInertia(fn (Assert $page) => $page
+        ->where('job', ['workflowId' => 1, 'name' => 'browser', 'workflow' => 'tests'])
+        ->where('report.kpi.value', 2)
+        ->has('report.kpi.description')
+        ->missing('report.kpi.benchmark')
+        ->has('report.values', 7)
+        ->where('report.values', fn ($values) => array_sum($values->all()) === 2)
+        ->where('report.metrics', ['ciFlakyJobRuns', 'ciFlakyJobWait', 'ciFlakyJobMinutes']));
+
+    // Without a job, it counts them all.
+    $page([])->assertInertia(fn (Assert $page) => $page->where('job', null)->where('report.kpi.value', 4));
+
+    // Other metrics can't be narrowed to a job.
+    $this->get(route('repositories.metric', ['owner' => 'acme', 'name' => 'app', 'metric' => 'ciRuns', 'workflow' => 1, 'job' => 'browser']))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('job', null)->where('report.kpi.value', 4));
 });
 
 it('has no history for a metric only known right now', function () {

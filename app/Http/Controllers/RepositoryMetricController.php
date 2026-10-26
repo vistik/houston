@@ -5,8 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\PresentsRepositories;
 use App\Http\Controllers\Concerns\PresentsTimelineEvents;
 use App\Jobs\SyncRepository;
+use App\Metrics\Ci\CiJob;
 use App\Metrics\Ci\CiMetric;
+use App\Metrics\Ci\FlakyJobMetric;
 use App\Metrics\Distribution;
+use App\Metrics\Metric;
 use App\Metrics\Metrics;
 use App\Metrics\Period;
 use App\Models\Repository;
@@ -38,6 +41,8 @@ class RepositoryMetricController extends Controller
             // Comparing with the time before an event charts both, side by side.
             ->chartingPrevious($event !== null);
         $includeBots = $request->boolean('bots');
+        // Only the flaky-job metrics can be narrowed to one job.
+        $job = Metrics::all()[$metric] instanceof FlakyJobMetric ? CiJob::fromRequest($request) : null;
 
         if ($repository->isStale()) {
             SyncRepository::trigger($repository, 'stale when viewed');
@@ -50,8 +55,33 @@ class RepositoryMetricController extends Controller
             'filters' => [...$period->filters(), 'granularity' => $period->granularity, 'complete' => $period->withoutCurrentBucket, 'bots' => $includeBots, 'event' => $event?->id],
             'events' => TimelineEvent::payloads(),
             'event' => $this->focusedEventPayload($event, $repository->lookbackStart()),
-            'report' => fn (): array => $this->report($repository, $period, $includeBots, $metric),
+            'job' => $job === null ? null : [
+                'workflowId' => $job->workflowId,
+                'name' => $job->name,
+                'workflow' => $repository->workflowRuns()->where('workflow_id', $job->workflowId)->latest('created_at')->value('name'),
+            ],
+            'report' => fn (): array => $job === null
+                ? $this->report($repository, $period, $includeBots, $metric)
+                : $this->jobReport($repository, $period, $includeBots, $metric, $job),
         ]);
+    }
+
+    /**
+     * A flaky-job metric narrowed to one job, which can switch between the other flaky-job metrics of
+     * the same job.
+     *
+     * @return array<string, mixed>
+     */
+    private function jobReport(Repository $repository, Period $period, bool $includeBots, string $metric, CiJob $job): array
+    {
+        $report = $this->reports->full($repository, $period, $includeBots);
+
+        return [
+            ...Arr::only($report, ['period', 'workingTime']),
+            ...$this->reports->jobMetric($repository, $period, $metric, $job),
+            'dates' => array_column($report['trend'], 'date'),
+            'metrics' => array_keys(array_filter(Metrics::all(), fn (Metric $definition): bool => $definition instanceof FlakyJobMetric)),
+        ];
     }
 
     /**
