@@ -76,6 +76,9 @@ export type MetricKey =
     | 'stalePullRequests'
     | 'ciQueueTime'
     | 'ciFlakyRate'
+    | 'ciFlakyJobRuns'
+    | 'ciFlakyJobWait'
+    | 'ciFlakyJobMinutes'
     | 'defaultBranchRedShare'
     | 'waitingOnReviewer'
     | 'waitingOnAuthor'
@@ -105,6 +108,9 @@ export type PullRequestMetricKey = Exclude<
     | 'ciRecoveryTime'
     | 'ciQueueTime'
     | 'ciFlakyRate'
+    | 'ciFlakyJobRuns'
+    | 'ciFlakyJobWait'
+    | 'ciFlakyJobMinutes'
     | 'defaultBranchRedShare'
     | 'deployments'
     | 'deployFrequency'
@@ -308,6 +314,47 @@ export type WorkflowStats = {
     lastUrl: string;
 };
 
+/** A job that failed and then passed when its run was re-run, told apart by workflow and name. */
+export type FlakyJob = {
+    workflowId: number;
+    workflow: string;
+    name: string;
+    /** Runs in which the job failed and then passed on a later attempt. */
+    runs: number;
+    /** The same, in the period before. */
+    previousRuns: number;
+    /** Attempts of the job that failed in those runs. */
+    failures: number;
+    /** CI seconds the failed attempts took. */
+    seconds: number;
+    /** Working seconds from a failed attempt finishing to the re-run passing, summed over its flaky runs. */
+    waitSeconds: number;
+    /** The steps its failed attempts failed in, most often first. */
+    steps: FlakyJobStep[];
+    /** The latest failed attempt, to read its logs. */
+    url: string | null;
+};
+
+export type FlakyJobStep = {
+    name: string;
+    failures: number;
+    /** One of GitHub's setup steps, which points at the runner or the network rather than the tests. */
+    setup: boolean;
+};
+
+export type FlakyJobs = {
+    /** The flakiest jobs, most often flaky first. */
+    jobs: FlakyJob[];
+    /** How many jobs were flaky at all. */
+    count: number;
+    /** CI seconds the failed attempts of every flaky job took. */
+    seconds: number;
+    /** Working seconds spent waiting on re-runs of flaky jobs, each run counted once. */
+    waitSeconds: number;
+    /** Re-run runs in the period whose jobs haven't been fetched yet. */
+    pendingRuns: number;
+};
+
 export type MergedPullRequest = {
     /** The owner/name of its repository. */
     repository: string;
@@ -412,6 +459,7 @@ export type VelocityReport = Omit<
     trend: TrendPoint[];
     trends: Record<TrendKey, Trend>;
     workflows: WorkflowStats[];
+    flakyJobs: FlakyJobs;
     ciFailureRateScope: CiFailureRateScope;
     defaultBranchStatus: DefaultBranchStatus;
     delivery: Delivery;

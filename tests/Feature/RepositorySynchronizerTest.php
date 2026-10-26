@@ -628,6 +628,56 @@ it('records how long first attempts of workflow runs queued', function () {
     expect(WorkflowRun::orderBy('github_id')->pluck('queue_seconds')->all())->toBe([150, null]);
 });
 
+it('fetches the jobs of re-run workflow runs once per attempt', function () {
+    $run = fn (int $id, int $attempt): array => [
+        'id' => $id, 'workflow_id' => 7, 'name' => 'tests', 'event' => 'push', 'status' => 'completed',
+        'conclusion' => 'success', 'head_branch' => 'main', 'head_sha' => 'abc', 'run_attempt' => $attempt,
+        'pull_requests' => [], 'html_url' => "https://github.com/acme/app/actions/runs/{$id}",
+        'created_at' => '2026-10-06T10:00:00Z', 'run_started_at' => '2026-10-06T10:00:00Z', 'updated_at' => '2026-10-06T10:20:00Z',
+    ];
+    $job = fn (int $id, int $attempt, string $conclusion): array => [
+        'id' => $id, 'name' => 'browser', 'run_attempt' => $attempt, 'conclusion' => $conclusion,
+        'html_url' => "https://github.com/acme/app/actions/runs/2/job/{$id}",
+        'started_at' => '2026-10-06T10:00:00Z', 'completed_at' => '2026-10-06T10:07:00Z',
+        'steps' => [
+            ['name' => 'Set up job', 'conclusion' => 'success'],
+            ['name' => 'Run browser tests', 'conclusion' => $conclusion],
+            ['name' => 'Upload screenshots', 'conclusion' => $conclusion === 'success' ? 'success' : 'skipped'],
+        ],
+    ];
+
+    // Run 3 was deleted on GitHub after it was listed.
+    Http::fake([
+        'api.github.com/repos/acme/app/actions/runs/2/jobs*' => Http::response(['total_count' => 2, 'jobs' => [$job(20, 1, 'failure'), $job(21, 2, 'success')]]),
+        'api.github.com/repos/acme/app/actions/runs/3/jobs*' => Http::response(['message' => 'Not Found'], 404),
+    ]);
+
+    $runs = [$run(1, 1), $run(2, 2), $run(3, 2)];
+    fakeGitHub([], [], function () use (&$runs): array {
+        return $runs;
+    });
+
+    app(RepositorySynchronizer::class)->sync($this->repository);
+
+    $jobs = WorkflowRun::firstWhere('github_id', 2)->jobs()->orderBy('run_attempt')->get();
+
+    expect($jobs->pluck('conclusion')->all())->toBe([WorkflowRunConclusion::Failure, WorkflowRunConclusion::Success])
+        ->and($jobs->first()->duration_seconds)->toBe(420)
+        ->and($jobs->pluck('failed_step')->all())->toBe(['Run browser tests', null])
+        ->and(WorkflowRun::orderBy('github_id')->pluck('jobs_attempt')->all())->toBe([null, 2, 2]);
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), 'runs/1/jobs'));
+
+    // Syncing again leaves runs alone until they're re-run once more.
+    $runs[1]['run_attempt'] = 3;
+    $sent = Http::recorded()->count();
+
+    app(RepositorySynchronizer::class)->sync($this->repository);
+
+    $jobRequests = Http::recorded()->slice($sent)->filter(fn (array $pair): bool => str_contains($pair[0]->url(), '/jobs'))->map(fn (array $pair): string => parse_url($pair[0]->url(), PHP_URL_PATH));
+
+    expect($jobRequests->values()->all())->toBe(['/repos/acme/app/actions/runs/2/jobs']);
+});
+
 it('only fetches the full list of open pull requests on a backfill', function () {
     $this->repository->syncState()->update(['pull_requests_synced_at' => '2026-10-05 00:00:00', 'workflow_runs_synced_at' => '2026-10-05 00:00:00']);
 

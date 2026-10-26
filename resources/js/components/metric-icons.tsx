@@ -169,6 +169,24 @@ const GLYPHS: Record<MetricKey, ReactNode> = {
     ),
     // Passed and failed on the same commit.
     ciFlakyRate: <path d="m3 12 3 3 5-6m4-1 6 6m0-6-6 6" />,
+    // Passed once it went around again.
+    ciFlakyJobRuns: (
+        <>
+            <path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v4h-4" />
+            <path d="m9 12 2 2 4-4" />
+        </>
+    ),
+    // An hourglass, waiting for the re-run.
+    ciFlakyJobWait: (
+        <path d="M7 3h10M7 21h10M8 3v3a4 4 0 0 0 8 0V3M8 21v-3a4 4 0 0 1 8 0v3" />
+    ),
+    // A stopwatch crossed out: CI time thrown away.
+    ciFlakyJobMinutes: (
+        <>
+            <circle cx="12" cy="13" r="8" />
+            <path d="M10 2h4M12 5v1M8.5 10.5l7 5M15.5 10.5l-7 5" />
+        </>
+    ),
     // A stretch of the timeline that was red.
     defaultBranchRedShare: (
         <>

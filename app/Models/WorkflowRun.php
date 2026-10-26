@@ -14,11 +14,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A cached GitHub Actions workflow run.
  *
  * @property WorkflowRunStatus $status
+ * @property int $run_attempt
+ * @property int|null $jobs_attempt The attempt whose jobs are cached, or null when none are.
  * @property WorkflowRunConclusion|null $conclusion Null until the run completes.
  * @property CarbonImmutable $created_at
  * @property CarbonImmutable|null $run_started_at
@@ -81,6 +84,16 @@ class WorkflowRun extends Model
     public function repository(): BelongsTo
     {
         return $this->belongsTo(Repository::class);
+    }
+
+    /**
+     * The jobs of every attempt, cached for re-run runs only.
+     *
+     * @return HasMany<WorkflowJob, $this>
+     */
+    public function jobs(): HasMany
+    {
+        return $this->hasMany(WorkflowJob::class);
     }
 
     /**

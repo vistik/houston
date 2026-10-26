@@ -17,6 +17,8 @@ use App\Models\TimelineEvent;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Random\Engine\Mt19937;
+use Random\Randomizer;
 
 /**
  * A year of made-up history for three repositories and two teams, for demos. Three timeline
@@ -82,7 +84,31 @@ class DemoSeeder extends Seeder
 
     private const array Verbs = ['Add', 'Fix', 'Refactor', 'Speed up', 'Simplify', 'Improve', 'Clean up', 'Support'];
 
+    /**
+     * The jobs of the tests and lint workflows, weighted by how often each is the one that fails and then
+     * passes on a re-run.
+     */
+    private const array FlakyTestJobs = ['browser (chrome)' => 9, 'feature (pgsql)' => 5, 'browser (safari)' => 3, 'unit' => 1, 'types' => 1];
+
+    private const array FlakyLintJobs = ['eslint' => 3, 'pint' => 1];
+
+    /**
+     * The steps each flaky job fails in, weighted the same way. Postgres sometimes isn't up in time,
+     * which is the runner rather than the tests.
+     */
+    private const array FlakySteps = [
+        'browser (chrome)' => ['Run browser tests' => 8, 'Run actions/checkout@v4' => 1],
+        'feature (pgsql)' => ['Run feature tests' => 3, 'Initialize containers' => 2],
+        'browser (safari)' => ['Run browser tests' => 1],
+        'unit' => ['Run unit tests' => 1],
+        'types' => ['Run phpstan' => 1],
+        'eslint' => ['Run eslint' => 1],
+        'pint' => ['Run actions/cache@v4' => 1],
+    ];
+
     private CarbonImmutable $now;
+
+    private Randomizer $jobRandomizer;
 
     private int $githubId = 1;
 
@@ -92,6 +118,8 @@ class DemoSeeder extends Seeder
     {
         // The same history on every run, so demos and screenshots line up.
         mt_srand(2026);
+        // The flaky jobs draw from their own generator, so adding them left every other number as it was.
+        $this->jobRandomizer = new Randomizer(new Mt19937(2026));
         $this->now = CarbonImmutable::now();
 
         DB::transaction(function (): void {
@@ -392,12 +420,54 @@ class DemoSeeder extends Seeder
             $this->insertRun($repository, $workflowId, $name, $event, $branch, $sha, $at, $minutes, $failed, 1, $pullRequest);
 
             if ($failed && mt_rand(1, 100) <= 45) {
-                $this->insertRun($repository, $workflowId, $name, $event, $branch, $sha, $at->addMinutes((int) $minutes + mt_rand(5, 30)), $minutes, false, 2, $pullRequest);
+                $retry = $this->insertRun($repository, $workflowId, $name, $event, $branch, $sha, $at->addMinutes((int) $minutes + mt_rand(5, 30)), $minutes, false, 2, $pullRequest);
+
+                if ($retry !== null) {
+                    $this->insertFlakyJob($retry, $workflowId === 1 ? self::FlakyTestJobs : self::FlakyLintJobs, $at, $minutes);
+                }
             }
         }
     }
 
-    private function insertRun(Repository $repository, int $workflowId, string $name, string $event, string $branch, string $sha, CarbonImmutable $at, float $minutes, bool $failed, int $attempt, ?int $pullRequest): void
+    /**
+     * The job of a re-run that failed on the first attempt and passed on the second, picked so that a
+     * few jobs are clearly the flakiest. Someone notices the failure a while later and re-runs it.
+     *
+     * @param  array<string, int>  $jobs  Job names and how likely each is to be the flaky one.
+     */
+    private function insertFlakyJob(int $runId, array $jobs, CarbonImmutable $at, float $minutes): void
+    {
+        $name = $this->pickWeighted($jobs);
+        $url = DB::table('workflow_runs')->where('id', $runId)->value('url');
+        $startedAt = $at;
+
+        foreach ([1 => 'failure', 2 => 'success'] as $attempt => $conclusion) {
+            $seconds = (int) round($minutes * 60 * $this->jobRandomizer->getFloat(0.6, 1.0));
+            $id = $this->githubId++;
+
+            DB::table('workflow_jobs')->insert([
+                'workflow_run_id' => $runId,
+                'github_id' => $id,
+                'name' => $name,
+                'run_attempt' => $attempt,
+                'conclusion' => $conclusion,
+                'url' => "{$url}/job/{$id}",
+                'started_at' => $startedAt,
+                'completed_at' => $startedAt->addSeconds($seconds),
+                'duration_seconds' => $seconds,
+                'failed_step' => $conclusion === 'failure' ? $this->pickWeighted(self::FlakySteps[$name]) : null,
+            ]);
+
+            $startedAt = $startedAt->addSeconds($seconds)->addMinutes($this->jobRandomizer->getInt(5, 90));
+        }
+
+        DB::table('workflow_runs')->where('id', $runId)->update(['jobs_attempt' => 2]);
+    }
+
+    /**
+     * @return int|null The run's id, or null when it would only start after now.
+     */
+    private function insertRun(Repository $repository, int $workflowId, string $name, string $event, string $branch, string $sha, CarbonImmutable $at, float $minutes, bool $failed, int $attempt, ?int $pullRequest): ?int
     {
         $queue = mt_rand(5, 60);
         $startedAt = $at->addSeconds($queue);
@@ -405,12 +475,12 @@ class DemoSeeder extends Seeder
         $done = $completedAt->lte($this->now);
 
         if ($at->gt($this->now)) {
-            return;
+            return null;
         }
 
         $id = $this->githubId++;
 
-        DB::table('workflow_runs')->insert([
+        return DB::table('workflow_runs')->insertGetId([
             'repository_id' => $repository->id,
             'github_id' => $id,
             'workflow_id' => $workflowId,
@@ -523,6 +593,24 @@ class DemoSeeder extends Seeder
         }
 
         return $count;
+    }
+
+    /**
+     * One of the keys, each as likely as its weight, drawn from the flaky jobs' own generator.
+     *
+     * @param  array<string, int>  $weights
+     */
+    private function pickWeighted(array $weights): string
+    {
+        $roll = $this->jobRandomizer->getInt(1, array_sum($weights));
+
+        foreach ($weights as $value => $weight) {
+            if (($roll -= $weight) <= 0) {
+                return $value;
+            }
+        }
+
+        return (string) array_key_last($weights);
     }
 
     /**

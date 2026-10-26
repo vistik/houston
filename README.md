@@ -8,7 +8,7 @@ Houston measures engineering velocity for GitHub repositories. It syncs pull req
 
 - 🚀 **Pull request flow:** throughput, cycle time, lead time, pickup and review time, time to approval, merge delay, size, and how long a pull request waits on reviewers versus its author.
 - 🔍 **Review quality:** unreviewed merges, changes requested, review rounds, rework, and how concentrated reviewing is.
-- 🚦 **CI:** failure rates on the default branch and on pull requests, flaky and rerun rates, duration, queue time, and how long the default branch stays red.
+- 🚦 **CI:** failure rates on the default branch and on pull requests, flaky and rerun rates, the flakiest jobs and what they cost, duration, queue time, and how long the default branch stays red.
 - 🛰️ **Delivery (DORA):** deploy frequency, lead time to production, change failure rate and time to restore. These come from GitHub Deployments, or from releases for repositories that don't deploy.
 - 📦 **Dependencies:** how many direct Composer and npm dependencies on the default branch are behind their latest stable release, and how many by a major version, compared with a month earlier.
 - 📍 **Events:** log a change, such as introducing AI code reviews, and compare the time since with the equally long stretch before it, on every trend chart.

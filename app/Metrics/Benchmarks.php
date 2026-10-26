@@ -26,7 +26,7 @@ class Benchmarks
         'pickupTime', 'reviewTime', 'timeToApproval', 'mergeDelay', 'pullRequestSize', 'mergeRate',
         'unreviewedMergeRate', 'changesRequestedRate', 'reviewDepth', 'ciFailureRate', 'ciDefaultBranchFailureRate',
         'ciPullRequestFailureRate', 'ciDuration', 'ciDurationP90', 'ciRerunRate', 'ciRuns', 'ciMinutes',
-        'ciRecoveryTime', 'ciQueueTime', 'ciFlakyRate', 'defaultBranchRedShare', 'waitingOnReviewer',
+        'ciRecoveryTime', 'ciQueueTime', 'ciFlakyRate', 'ciFlakyJobRuns', 'ciFlakyJobWait', 'ciFlakyJobMinutes', 'defaultBranchRedShare', 'waitingOnReviewer',
         'waitingOnAuthor', 'reviewRounds', 'reworkRate', 'reviewConcentration', 'remediations', 'deployments',
         'deployFrequency', 'leadTimeToProduction', 'changeFailureRate', 'timeToRestore', 'deploymentFailureRate',
         'openPullRequests', 'stalePullRequests', 'activeDevelopers',
@@ -37,7 +37,7 @@ class Benchmarks
      *
      * @var list<string>
      */
-    public const array PerWeek = ['throughput', 'opened', 'remediations', 'ciRuns', 'ciMinutes', 'deployments'];
+    public const array PerWeek = ['throughput', 'opened', 'remediations', 'ciRuns', 'ciMinutes', 'ciFlakyJobRuns', 'ciFlakyJobWait', 'ciFlakyJobMinutes', 'deployments'];
 
     /**
      * Published industry benchmarks where they exist (DORA, LinearB), and suggested targets otherwise.

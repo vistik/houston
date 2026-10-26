@@ -44,6 +44,8 @@ type Props = {
     filters: ReportFilters;
     events: TimelineEvent[];
     event: FocusedTimelineEvent | null;
+    /** The one job a flaky-job metric is narrowed to, if any. */
+    job: { workflowId: number; name: string; workflow: string | null } | null;
     report: {
         period: VelocityReport['period'];
         kpi: Metric;
@@ -77,6 +79,7 @@ export default function RepositoryMetric({
     filters,
     events,
     event,
+    job,
     report,
 }: Props) {
     const info = METRICS[metric];
@@ -88,10 +91,18 @@ export default function RepositoryMetric({
         ['report'],
     );
 
-    const url = (key: MetricKey, next: ReportFilters) =>
+    // Narrowed to a job, every link keeps to it until it is left for all jobs.
+    const jobQuery = job
+        ? { workflow: job.workflowId, job: job.name }
+        : undefined;
+    const url = (
+        key: MetricKey,
+        next: ReportFilters,
+        forJob: typeof jobQuery = jobQuery,
+    ) =>
         metricRoute.url(
             { owner: repository.owner, name: repository.name, metric: key },
-            { query: reportQuery(next) },
+            { query: { ...reportQuery(next), ...forJob } },
         );
 
     const visit = (key: MetricKey, changes: Partial<ReportFilters>) =>
@@ -113,7 +124,9 @@ export default function RepositoryMetric({
 
     return (
         <AppLayout>
-            <Head title={`${label} · ${repository.fullName}`} />
+            <Head
+                title={`${label}${job ? ` · ${job.name}` : ''} · ${repository.fullName}`}
+            />
 
             <Link
                 href={show.url(
@@ -141,10 +154,28 @@ export default function RepositoryMetric({
                         <h1 className="truncate text-2xl font-semibold tracking-tight">
                             {label}
                         </h1>
-                        {info?.hint && (
-                            <p className="mt-0.5 text-sm text-ink-secondary">
-                                {info.hint}
+                        {job ? (
+                            <p className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 text-sm text-ink-secondary">
+                                <span className="truncate">
+                                    For{' '}
+                                    <span className="font-medium text-ink">
+                                        {job.name}
+                                    </span>
+                                    {job.workflow && ` in ${job.workflow}`}
+                                </span>
+                                <Link
+                                    href={url(metric, filters, undefined)}
+                                    className="text-xs text-ink-muted underline decoration-line-strong underline-offset-2 hover:text-ink"
+                                >
+                                    All jobs
+                                </Link>
                             </p>
+                        ) : (
+                            info?.hint && (
+                                <p className="mt-0.5 text-sm text-ink-secondary">
+                                    {info.hint}
+                                </p>
+                            )
                         )}
                     </div>
                 </div>
@@ -204,6 +235,7 @@ export default function RepositoryMetric({
                                             event: timelineEvent.id,
                                             complete: filters.complete ? 1 : 0,
                                             bots: filters.bots ? 1 : undefined,
+                                            ...jobQuery,
                                         },
                                     },
                                 ),

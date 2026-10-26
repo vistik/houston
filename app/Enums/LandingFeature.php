@@ -35,7 +35,7 @@ enum LandingFeature: string
     public function blurb(): string
     {
         return match ($this) {
-            self::Metrics => '43 readouts from PRs, reviews and CI runs',
+            self::Metrics => '46 readouts from PRs, reviews and CI runs',
             self::Repository => 'Where every pull request spends its time',
             self::Events => 'Log a change, then see if it helped',
             self::Teams => 'Report on a team, not a repo',

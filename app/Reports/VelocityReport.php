@@ -4,6 +4,7 @@ namespace App\Reports;
 
 use App\Enums\PullRequestState;
 use App\Metrics\BranchStatus;
+use App\Metrics\Ci\CiJob;
 use App\Metrics\Ci\CiWindow;
 use App\Metrics\CiFailureRateScope;
 use App\Metrics\CiMetrics;
@@ -118,6 +119,7 @@ class VelocityReport
     /**
      * @param  Repository|null  $onlyRepository  For a team, report only on its pull requests in this repository.
      * @param  CiFailureRateScope  $ciFailureRateScope  Which workflow runs the CI failure rate counts.
+     * @param  CiJob|null  $job  One job to narrow the flaky-job metrics to.
      */
     public function __construct(
         Repository|Team $subject,
@@ -126,6 +128,7 @@ class VelocityReport
         ?WorkingTime $time = null,
         private ?Repository $onlyRepository = null,
         private CiFailureRateScope $ciFailureRateScope = CiFailureRateScope::DefaultBranch,
+        ?CiJob $job = null,
     ) {
         $this->time = $time ?? WorkingTime::in($period->timezone);
         $this->now = CarbonImmutable::now();
@@ -141,7 +144,7 @@ class VelocityReport
             return;
         }
 
-        $this->ci = new CiMetrics($this->repository, $this->defaultBranch, $period->previousFrom, $this->time, $this->now, $ciFailureRateScope);
+        $this->ci = new CiMetrics($this->repository, $this->defaultBranch, $period->previousFrom, $this->time, $this->now, $ciFailureRateScope, $job);
 
         // Load one extra month so the first deployment in the window knows what it shipped.
         $this->delivery = new DeliveryMetrics(
@@ -185,6 +188,7 @@ class VelocityReport
         return [
             ...$report,
             'workflows' => $this->workflows(),
+            'flakyJobs' => $this->ci()->flakyJobs($this->period),
             'ciFailureRateScope' => $this->ciFailureRateScope,
             'defaultBranchStatus' => $this->defaultBranchStatus(),
             'delivery' => $this->deliverySummary(),
@@ -486,6 +490,16 @@ class VelocityReport
         }
 
         return $series;
+    }
+
+    /**
+     * One metric's headline numbers: its value, the previous period's, and how to read them.
+     *
+     * @return array<string, mixed>
+     */
+    public function metric(string $key): array
+    {
+        return $this->kpis([$key])[$key] ?? throw new LogicException("[{$key}] isn't a metric of this report.");
     }
 
     /**

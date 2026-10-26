@@ -33,6 +33,9 @@ final class CiWindow
 
     private ?float $redShare = null;
 
+    /** @var array{runs: int, seconds: int, waitSeconds: int, pendingRuns: int, fetchedRuns: int}|null */
+    private ?array $flakyJobs = null;
+
     /**
      * @param  CiFailureRateScope  $failureRateScope  Which runs the CI failure rate counts.
      * @param  Closure(): object  $makeCounts
@@ -41,6 +44,7 @@ final class CiWindow
      * @param  Closure(): Collection<int, int>  $makeRecoveryTimes
      * @param  Closure(): ?float  $makeFlakyRate
      * @param  Closure(): ?float  $makeRedShare
+     * @param  Closure(): array{runs: int, seconds: int, waitSeconds: int, pendingRuns: int, fetchedRuns: int}  $makeFlakyJobs
      */
     public function __construct(
         public readonly CiFailureRateScope $failureRateScope,
@@ -50,6 +54,7 @@ final class CiWindow
         private Closure $makeRecoveryTimes,
         private Closure $makeFlakyRate,
         private Closure $makeRedShare,
+        private Closure $makeFlakyJobs,
     ) {}
 
     /**
@@ -126,5 +131,26 @@ final class CiWindow
         }
 
         return $this->redShare;
+    }
+
+    /**
+     * What the jobs that failed and then passed on a re-run cost, by key:
+     *
+     * - runs: how often a job did, counted per run and job
+     * - seconds: CI seconds of their failed attempts
+     * - waitSeconds: working time from a failed attempt finishing to the re-run passing, each run once
+     * - pendingRuns, fetchedRuns: re-runs whose jobs are still to be fetched, and those that are
+     */
+    public function flakyJobs(string $key): int
+    {
+        return ($this->flakyJobs ??= ($this->makeFlakyJobs)())[$key];
+    }
+
+    /**
+     * Whether the window's flaky jobs are known: there were no re-runs, or some have had their jobs fetched.
+     */
+    public function flakyJobsKnown(): bool
+    {
+        return $this->flakyJobs('pendingRuns') === 0 || $this->flakyJobs('fetchedRuns') > 0;
     }
 }
