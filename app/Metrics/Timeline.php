@@ -8,46 +8,60 @@ use App\Models\PullRequest;
 use App\Models\PullRequestActivity;
 use App\Models\PullRequestReview;
 use Carbon\CarbonImmutable;
-use InvalidArgumentException;
+use DateTimeImmutable;
+use DateTimeZone;
 
 /**
  * The reviews and activities of one pull request, as plain values.
  *
  * Reports replay tens of thousands of these, so they are read as rows rather than Eloquent models,
- * which are an order of magnitude slower to build and to read.
+ * which are an order of magnitude slower to build and to read. Moments are kept as unix timestamps:
+ * a busy repository has millions of them, and a date object for each runs a worker out of memory.
+ * Turn one into a date with moment() where it is needed. Activities are what reports have the most
+ * of, so they are kept as two lists of plain values rather than a row each, and those by bots, which
+ * no report reads, are left out.
  *
- * @phpstan-type Review array{reviewer: string, isBot: bool, state: ReviewState, comments: int, at: CarbonImmutable}
- * @phpstan-type Activity array{actor: string|null, isBot: bool, isPush: bool, at: CarbonImmutable}
+ * @phpstan-type Review array{reviewer: string, isBot: bool, state: ReviewState, comments: int, at: int}
  */
 final readonly class Timeline
 {
     /**
      * @param  list<Review>  $reviews
-     * @param  list<Activity>  $activities
+     * @param  list<int>  $activityTimes  When each commit, force push and comment by a person happened.
+     * @param  list<ReviewEventKind>  $activityKinds  Who each of those came from, in the same order.
      */
-    public function __construct(public array $reviews = [], public array $activities = []) {}
+    public function __construct(public array $reviews = [], public array $activityTimes = [], public array $activityKinds = []) {}
 
     /**
      * The timelines of many pull requests in two queries, keyed by pull request id. Pull requests
      * without any reviews or activities get an empty timeline.
      *
-     * @param  list<int>  $pullRequestIds
+     * @param  iterable<PullRequest>  $pullRequests
      * @return array<int, self>
      */
-    public static function load(array $pullRequestIds): array
+    public static function load(iterable $pullRequests): array
     {
-        if ($pullRequestIds === []) {
+        $authors = [];
+
+        foreach ($pullRequests as $pr) {
+            $authors[(int) $pr->id] = $pr->author;
+        }
+
+        if ($authors === []) {
             return [];
         }
 
-        $reviews = array_fill_keys($pullRequestIds, []);
-        $activities = array_fill_keys($pullRequestIds, []);
+        $ids = array_keys($authors);
+        $reviews = array_fill_keys($ids, []);
+        $activityTimes = array_fill_keys($ids, []);
+        $activityKinds = array_fill_keys($ids, []);
 
         $reviewRows = PullRequestReview::query()
-            ->whereIntegerInRaw('pull_request_id', $pullRequestIds)
+            ->whereIntegerInRaw('pull_request_id', $ids)
             ->orderBy('id')
             ->toBase()
-            ->get(['pull_request_id', 'reviewer', 'reviewer_is_bot', 'state', 'comments_count', 'submitted_at']);
+            ->select(['pull_request_id', 'reviewer', 'reviewer_is_bot', 'state', 'comments_count', 'submitted_at'])
+            ->cursor();
 
         foreach ($reviewRows as $row) {
             $reviews[$row->pull_request_id][] = [
@@ -55,45 +69,56 @@ final readonly class Timeline
                 'isBot' => (bool) $row->reviewer_is_bot,
                 'state' => ReviewState::from($row->state),
                 'comments' => (int) $row->comments_count,
-                'at' => self::date($row->submitted_at),
+                'at' => self::timestamp($row->submitted_at),
             ];
         }
 
         $activityRows = PullRequestActivity::query()
-            ->whereIntegerInRaw('pull_request_id', $pullRequestIds)
+            ->whereIntegerInRaw('pull_request_id', $ids)
+            ->where('actor_is_bot', false)
             ->orderBy('id')
             ->toBase()
-            ->get(['pull_request_id', 'kind', 'actor', 'actor_is_bot', 'occurred_at']);
+            ->select(['pull_request_id', 'kind', 'actor', 'occurred_at'])
+            ->cursor();
 
         foreach ($activityRows as $row) {
-            $activities[$row->pull_request_id][] = [
-                'actor' => $row->actor,
-                'isBot' => (bool) $row->actor_is_bot,
-                'isPush' => PullRequestActivityKind::from($row->kind)->isPush(),
-                'at' => self::date($row->occurred_at),
-            ];
+            $activityTimes[$row->pull_request_id][] = self::timestamp($row->occurred_at);
+            $activityKinds[$row->pull_request_id][] = match (true) {
+                PullRequestActivityKind::from($row->kind)->isPush() => ReviewEventKind::Push,
+                $row->actor === $authors[$row->pull_request_id] => ReviewEventKind::Author,
+                default => ReviewEventKind::Reviewer,
+            };
         }
 
         return array_map(
-            fn (int $id): self => new self($reviews[$id], $activities[$id]),
-            array_combine($pullRequestIds, $pullRequestIds),
+            fn (int $id): self => new self($reviews[$id], $activityTimes[$id], $activityKinds[$id]),
+            array_combine($ids, $ids),
         );
     }
 
     public static function for(PullRequest $pr): self
     {
-        return self::load([$pr->id])[$pr->id];
+        return self::load([$pr])[$pr->id];
     }
 
     /**
-     * Parse a timestamp column the way Eloquent's date casts do.
+     * A moment of a review or activity as a date, as Eloquent's date casts would have read it. Going
+     * through a plain date is almost twice as fast as Carbon's createFromTimestamp().
      */
-    private static function date(string $value): CarbonImmutable
+    public static function moment(int $timestamp): CarbonImmutable
     {
-        try {
-            return CarbonImmutable::createFromFormat('Y-m-d H:i:s', $value);
-        } catch (InvalidArgumentException) {
-            return CarbonImmutable::parse($value);
-        }
+        static $zones = [];
+
+        $zone = date_default_timezone_get();
+
+        return CarbonImmutable::instance((new DateTimeImmutable("@{$timestamp}"))->setTimezone($zones[$zone] ??= new DateTimeZone($zone)));
+    }
+
+    /**
+     * Parse a timestamp column the way Eloquent's date casts do, into a unix timestamp.
+     */
+    private static function timestamp(string $value): int
+    {
+        return strtotime($value) ?: CarbonImmutable::parse($value)->getTimestamp();
     }
 }

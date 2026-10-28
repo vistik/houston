@@ -91,7 +91,7 @@ class VelocityReport
      */
     private array $durations = [];
 
-    /** @var Collection<int, array{reviewer: string, at: CarbonImmutable}>|null */
+    /** @var Collection<int, array{reviewer: string, at: int}>|null */
     private ?Collection $peerReviews = null;
 
     /**
@@ -352,7 +352,7 @@ class VelocityReport
 
         foreach ($pullRequests as $pr) {
             if (! isset($this->timelines[$pr->id])) {
-                $missing[] = (int) $pr->id;
+                $missing[] = $pr;
             }
         }
 
@@ -568,7 +568,7 @@ class VelocityReport
             'abandoned' => $this->pullRequests->filter(fn (PullRequest $pr): bool => $this->isAbandoned($pr) && $inWindow($this->attributed($pr, $pr->closed_at))),
             'pickedUp' => $this->pullRequests->filter(fn (PullRequest $pr): bool => $inWindow($this->attributed($pr, $pr->first_response_at))),
             'approved' => $this->pullRequests->filter(fn (PullRequest $pr): bool => $inWindow($this->attributed($pr, $pr->first_approval_at))),
-            'reviewers' => fn (): Collection => $this->peerReviews()->filter(fn (array $review): bool => $inWindow($review['at']))->pluck('reviewer'),
+            'reviewers' => fn (): Collection => $this->peerReviews()->filter(fn (array $review): bool => $inWindow(Timeline::moment($review['at'])))->pluck('reviewer'),
         ];
     }
 
@@ -605,7 +605,7 @@ class VelocityReport
                 $reviewers = array_fill(0, $count, []);
 
                 foreach ($this->peerReviews() as $review) {
-                    if (($at = $bucket($review['at'])) !== null) {
+                    if (($at = $bucket(Timeline::moment($review['at']))) !== null) {
                         $reviewers[$at][] = $review['reviewer'];
                     }
                 }
@@ -631,14 +631,15 @@ class VelocityReport
 
     /**
      * Every review by someone other than the author and not by a bot, across all pull requests. A team
-     * report keeps the reviews of its pull requests made while their author was on it.
+     * report keeps the reviews of its pull requests made while their author was on it. When each was
+     * made is kept as a unix timestamp, as there can be tens of thousands.
      *
-     * @return Collection<int, array{reviewer: string, at: CarbonImmutable}>
+     * @return Collection<int, array{reviewer: string, at: int}>
      */
     private function peerReviews(): Collection
     {
         return $this->peerReviews ??= $this->timelines($this->pullRequests)->flatMap(fn (PullRequest $pr): Collection => collect($this->timeline($pr)->reviews)
-            ->filter(fn (array $review): bool => $review['reviewer'] !== $pr->author && ! $review['isBot'] && $this->attributed($pr, $review['at']) !== null)
+            ->filter(fn (array $review): bool => $review['reviewer'] !== $pr->author && ! $review['isBot'] && $this->attributed($pr, Timeline::moment($review['at'])) !== null)
             ->map(fn (array $review): array => ['reviewer' => $review['reviewer'], 'at' => $review['at']]))
             ->values();
     }
@@ -1129,7 +1130,7 @@ class VelocityReport
 
     private function lastHumanActivity(PullRequest $pr): CarbonImmutable
     {
-        $moments = [$pr->opened_at, $pr->ready_at];
+        $moments = [$pr->opened_at->getTimestamp(), $pr->ready_at?->getTimestamp() ?? 0];
 
         $timeline = $this->timeline($pr);
 
@@ -1139,13 +1140,9 @@ class VelocityReport
             }
         }
 
-        foreach ($timeline->activities as $activity) {
-            if (! $activity['isBot']) {
-                $moments[] = $activity['at'];
-            }
-        }
+        array_push($moments, ...$timeline->activityTimes);
 
-        return collect($moments)->filter()->max() ?? $pr->opened_at;
+        return Timeline::moment(max($moments));
     }
 
     /**
