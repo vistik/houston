@@ -933,7 +933,9 @@ class RepositorySynchronizer
 
             $state->save();
 
-            $batch = array_slice($requests, $fetched, 2 * self::RestConcurrency);
+            // A page of runs takes about 5 MB once decoded, and a batch is held at once, so it is kept to a
+            // single round of concurrent requests.
+            $batch = array_slice($requests, $fetched, self::RestConcurrency);
 
             if ($batch === []) {
                 return;

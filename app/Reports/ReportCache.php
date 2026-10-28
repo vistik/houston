@@ -58,16 +58,23 @@ class ReportCache
      * the report defaults, and both walls. Then the repository report for each of the WarmedDays in
      * each grouping, leaving out the current bucket as the defaults do and without bots, and the MCP
      * tools' 30 days.
+     *
+     * A report holds its pull requests and timelines in reference cycles, which PHP only frees when it
+     * collects cycles. It puts that off once collections stop freeing much, as they do while a large
+     * report is being built, so without collecting after each report a busy repository's reports pile
+     * up until the worker runs out of memory.
      */
     public function warm(Repository $repository): void
     {
         $repository->load('sync');
         $defaults = ReportDefaults::current();
 
-        $this->summary($repository, Period::fromRequest(new Request, Repository::longestLookbackDays(), $defaults));
-        $this->full($repository, Period::fromRequest(new Request, $repository->lookbackDays(), $defaults)->withoutCurrentBucket($defaults->withoutCurrentBucket));
-        $this->wall($repository, Period::lastDays(14, $defaults->timezone));
-        $this->full($repository, Period::lastDays(30, $defaults->timezone));
+        $reports = [
+            fn () => $this->summary($repository, Period::fromRequest(new Request, Repository::longestLookbackDays(), $defaults)),
+            fn () => $this->full($repository, Period::fromRequest(new Request, $repository->lookbackDays(), $defaults)->withoutCurrentBucket($defaults->withoutCurrentBucket)),
+            fn () => $this->wall($repository, Period::lastDays(14, $defaults->timezone)),
+            fn () => $this->full($repository, Period::lastDays(30, $defaults->timezone)),
+        ];
 
         foreach (self::WarmedDays as $days) {
             foreach (Granularity::cases() as $granularity) {
@@ -78,11 +85,16 @@ class ReportCache
                     continue;
                 }
 
-                $this->full($repository, $period->withoutCurrentBucket($defaults->withoutCurrentBucket));
+                $reports[] = fn () => $this->full($repository, $period->withoutCurrentBucket($defaults->withoutCurrentBucket));
             }
         }
 
-        $this->summary($repository, Period::lastDays(30, $defaults->timezone));
+        $reports[] = fn () => $this->summary($repository, Period::lastDays(30, $defaults->timezone));
+
+        foreach ($reports as $report) {
+            $report();
+            gc_collect_cycles();
+        }
     }
 
     /**

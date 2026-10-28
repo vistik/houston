@@ -142,20 +142,12 @@ final class ReviewFlow
             }
 
             $events[] = $review['reviewer'] === $pr->author
-                ? [$review['at'], ReviewEventKind::Author, null]
-                : [$review['at'], ReviewEventKind::Reviewer, $review['state']];
+                ? [Timeline::moment($review['at']), ReviewEventKind::Author, null]
+                : [Timeline::moment($review['at']), ReviewEventKind::Reviewer, $review['state']];
         }
 
-        foreach ($timeline->activities as $activity) {
-            if ($activity['isBot']) {
-                continue;
-            }
-
-            $events[] = match (true) {
-                $activity['isPush'] => [$activity['at'], ReviewEventKind::Push, null],
-                $activity['actor'] === $pr->author => [$activity['at'], ReviewEventKind::Author, null],
-                default => [$activity['at'], ReviewEventKind::Reviewer, ReviewState::Commented],
-            };
+        foreach ($timeline->activityKinds as $index => $kind) {
+            $events[] = [Timeline::moment($timeline->activityTimes[$index]), $kind, $kind === ReviewEventKind::Reviewer ? ReviewState::Commented : null];
         }
 
         usort($events, fn (array $a, array $b): int => $a[0] <=> $b[0]);
