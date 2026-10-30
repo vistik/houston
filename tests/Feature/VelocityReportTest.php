@@ -8,6 +8,7 @@ use App\Metrics\BranchStatus;
 use App\Metrics\CiFailureRateScope;
 use App\Metrics\OpenPullRequestStatus;
 use App\Metrics\Period;
+use App\Metrics\Stats;
 use App\Models\Deployment;
 use App\Models\PullRequest;
 use App\Models\PullRequestActivity;
@@ -661,4 +662,40 @@ it('only counts human activity when deciding a pull request is stale', function 
     expect($stale[$pr->number])->toBeTrue()
         ->and($stale[$fresh->number])->toBeFalse()
         ->and($report['kpis']['stalePullRequests']['value'])->toBe(1);
+});
+
+it('sums up the CI durations of a busy repository without holding a row per run', function () {
+    $rows = [];
+
+    foreach (range(1, 20000) as $index) {
+        $createdAt = $this->now->subDays(3)->addSeconds($index * 10);
+        $rows[] = [
+            'repository_id' => $this->repository->id, 'github_id' => $index, 'workflow_id' => $index % 2 + 1, 'name' => 'tests',
+            'event' => 'push', 'status' => 'completed', 'conclusion' => 'success', 'head_branch' => 'main',
+            'head_sha' => "sha{$index}", 'run_attempt' => 1, 'url' => 'https://github.com', 'run_started_at' => $createdAt,
+            'completed_at' => $createdAt->addSeconds($index % 600), 'duration_seconds' => $index % 600, 'queue_seconds' => $index % 60,
+            'created_at' => $createdAt,
+        ];
+    }
+
+    foreach (array_chunk($rows, 500) as $chunk) {
+        DB::table('workflow_runs')->insert($chunk);
+    }
+
+    unset($rows, $chunk);
+
+    $period = Period::lastDays(7, 'UTC');
+    $ci = (fn () => $this->ci())->call(new VelocityReport($this->repository->fresh('sync'), $period));
+
+    $before = memory_get_usage();
+    memory_reset_peak_usage();
+    $workflows = $ci->workflows($period);
+    $queueTime = $ci->window($period->from, $period->to)->durations('queue_seconds');
+    $peak = memory_get_peak_usage() - $before;
+
+    // Reading a row per run takes about 10 MB here, and runs a worker out of memory on a busy repository.
+    expect($peak)->toBeLessThan(2 * 1024 * 1024)
+        ->and($workflows)->toHaveCount(2)
+        ->and($workflows[0])->toMatchArray(['workflowId' => 2, 'queueTime' => 29, 'duration' => 297, 'durationP90' => 539])
+        ->and(Stats::median($queueTime))->toEqual(29);
 });

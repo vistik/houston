@@ -66,11 +66,13 @@ class CiMetrics
         return new CiWindow(
             failureRateScope: $this->failureRateScope,
             makeCounts: fn (): object => $this->counts($this->runs($from, $to))->first(),
-            makeDurations: fn (): Collection => $this->runs($from, $to)->decisive()->toBase()->get(['duration_seconds', 'queue_seconds']),
-            makeCommitDurations: fn (): Collection => $this->runs($from, $to)->decisive()->toBase()
-                ->selectRaw('max(duration_seconds) as duration_seconds')
-                ->groupBy('head_sha')
-                ->pluck('duration_seconds'),
+            makeDurations: fn (string $column): Collection => self::spread($this->valueCounts($this->runs($from, $to)->decisive()->toBase(), $column)),
+            makeCommitDurations: fn (): Collection => self::spread($this->valueCounts(
+                $this->repository->getConnection()->query()->fromSub($this->runs($from, $to)->decisive()->toBase()
+                    ->selectRaw('max(duration_seconds) as duration_seconds')
+                    ->groupBy('head_sha'), 'commits'),
+                'duration_seconds',
+            )),
             makeRecoveryTimes: fn (): Collection => $this->recoveryTimes($from, $to),
             makeFlakyRate: fn (): ?float => $this->flakyRate($from, $to),
             makeRedShare: fn (): ?float => $this->redShare($from, $to),
@@ -142,7 +144,8 @@ class CiMetrics
             ->get()
             ->keyBy('workflow_id');
 
-        $durations = $window()->decisive()->toBase()->get(['workflow_id', 'duration_seconds', 'queue_seconds'])->groupBy('workflow_id');
+        $durations = $this->valueCounts($window()->decisive()->toBase(), 'duration_seconds', 'workflow_id')->groupBy('workflow_id');
+        $queues = $this->valueCounts($window()->decisive()->toBase(), 'queue_seconds', 'workflow_id')->groupBy('workflow_id');
 
         $latest = $this->repository->getConnection()->query()
             ->fromSub($window()->toBase()->select(['workflow_id', 'name', 'conclusion', 'status', 'url'])
@@ -153,8 +156,9 @@ class CiMetrics
 
         return $counts
             ->sortBy([['runs', 'desc'], ['first_id', 'asc']])
-            ->map(function (object $row) use ($flaky, $durations, $latest, $excluded): array {
-                $runs = $durations->get($row->workflow_id, collect());
+            ->map(function (object $row) use ($flaky, $durations, $queues, $latest, $excluded): array {
+                $runs = self::spread($durations->get($row->workflow_id, collect()));
+                $queued = self::spread($queues->get($row->workflow_id, collect()));
                 $last = $latest[$row->workflow_id];
                 $commits = $flaky->get($row->workflow_id);
 
@@ -167,9 +171,9 @@ class CiMetrics
                     'defaultBranchFailureRate' => Stats::ratio((int) $row->default_branch_failed, (int) $row->default_branch),
                     'rerunRate' => Stats::ratio((int) $row->reruns, (int) $row->decisive),
                     'flakyRate' => $commits === null ? null : Stats::ratio((int) $commits->flaky, (int) $commits->commits),
-                    'queueTime' => Stats::median($runs->pluck('queue_seconds')),
-                    'duration' => Stats::median($runs->pluck('duration_seconds')),
-                    'durationP90' => Stats::percentile($runs->pluck('duration_seconds'), 90),
+                    'queueTime' => Stats::median($queued),
+                    'duration' => Stats::median($runs),
+                    'durationP90' => Stats::percentile($runs, 90),
                     'minutes' => (int) round((int) $row->seconds / 60),
                     'lastConclusion' => $last->conclusion ?? $last->status,
                     'lastUrl' => $last->url,
@@ -545,6 +549,41 @@ class CiMetrics
                 'broken_at' => $date($row->broken_at),
                 'recovered_at' => $date($row->recovered_at),
             ]);
+    }
+
+    /**
+     * How many rows hold each value of a column, leaving out nulls, optionally per another column. A
+     * busy repository has far more runs than distinct durations, and reading a row per run runs a
+     * worker out of memory.
+     *
+     * @return Collection<int, stdClass>
+     */
+    private function valueCounts(QueryBuilder $rows, string $column, ?string $by = null): Collection
+    {
+        return $rows
+            ->select($by === null ? [] : [$by])
+            ->addSelect("{$column} as measured")
+            ->selectRaw('count(*) as rows_count')
+            ->whereNotNull($column)
+            ->groupBy(array_filter([$by, $column]))
+            ->get();
+    }
+
+    /**
+     * Every value counted by valueCounts, as many times as it was counted.
+     *
+     * @param  Collection<int, stdClass>  $counts
+     * @return Collection<int, int>
+     */
+    private static function spread(Collection $counts): Collection
+    {
+        $values = [];
+
+        foreach ($counts as $count) {
+            array_push($values, ...array_fill(0, (int) $count->rows_count, (int) $count->measured));
+        }
+
+        return collect($values);
     }
 
     /**
