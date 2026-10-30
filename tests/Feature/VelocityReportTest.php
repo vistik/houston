@@ -481,6 +481,27 @@ it('splits review time into waiting on reviewers and waiting on authors', functi
         ->toEqual(['pickup' => 7200, 'author' => 14400, 'review' => 7200, 'merge' => 3600]);
 });
 
+it('only keeps the streaks that broke and the latest one of each workflow, however many runs passed', function () {
+    $factory = WorkflowRun::factory()->for($this->repository);
+
+    foreach (range(1, 30) as $hour) {
+        $factory->at($this->now->subDays(5)->addHours($hour))->create(['workflow_id' => 1]);
+        $factory->at($this->now->subDays(2)->addHours($hour))->create(['workflow_id' => 1]);
+        $factory->at($this->now->subDays(5)->addHours($hour))->create(['workflow_id' => 2, 'name' => 'lint']);
+    }
+
+    $factory->failed()->at($this->now->subDays(3))->create(['workflow_id' => 1]);
+    $factory->at($this->now->subDays(3)->addHours(2))->create(['workflow_id' => 1]);
+
+    $report = new VelocityReport($this->repository->fresh('sync'), Period::lastDays(7, 'UTC'));
+    $kpis = $report->toArray()['kpis'];
+    $streaks = (fn () => $this->streaks)->call((fn () => $this->ci)->call($report));
+
+    expect($streaks)->toHaveCount(3)
+        ->and($streaks->where('workflow_id', 1)->first()['broken_at']->toIso8601String())->toBe($this->now->subDays(3)->toIso8601String())
+        ->and($kpis['ciRecoveryTime']['value'])->toEqual(2 * 3600 + 5 * 60);
+});
+
 it('measures CI queue time, flakiness and how long the default branch was red', function () {
     $factory = WorkflowRun::factory()->for($this->repository);
 

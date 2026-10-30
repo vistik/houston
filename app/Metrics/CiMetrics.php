@@ -484,10 +484,13 @@ class CiMetrics
     }
 
     /**
-     * Every failure streak on the default branch, per workflow and in order.
+     * Every failure streak on the default branch, per workflow and in order, and the latest streak of
+     * each workflow, which holds its latest run.
      *
      * Decisive runs are numbered by how many passes came before them, so a run of failures and the
-     * pass that ends it share a number. A streak that starts with a pass never broke.
+     * pass that ends it share a number. A streak that starts with a pass never broke. Each pass after a
+     * pass is a streak of its own, so on a busy repository nearly every run is one; those are left out
+     * in the database, as reading one row per run runs a worker out of memory.
      *
      * @return Collection<int, Streak>
      */
@@ -515,8 +518,15 @@ class CiMetrics
 
         $date = fn (?string $value): ?CarbonImmutable => $value === null ? null : CarbonImmutable::parse($value);
 
-        return $this->streaks = $this->repository->getConnection()->query()
+        $numbered = $this->repository->getConnection()->query()
             ->fromSub($runs, 'runs')
+            ->select(['workflow_id', 'created_at', 'completed_at', 'failed', 'latest_name'])
+            // Passes up to and including the run, minus the run itself when it passed.
+            ->selectRaw('passes - (1 - failed) as streak')
+            ->selectRaw('max(passes - (1 - failed)) over (partition by workflow_id) as last_streak');
+
+        return $this->streaks = $this->repository->getConnection()->query()
+            ->fromSub($numbered, 'numbered')
             ->selectRaw(implode(', ', [
                 'workflow_id',
                 'max(latest_name) as latest_name',
@@ -524,8 +534,8 @@ class CiMetrics
                 'min(case when failed = 1 then created_at end) as broken_at',
                 'max(case when failed = 0 then coalesce(completed_at, created_at) end) as recovered_at',
             ]))
-            // Passes up to and including the run, minus the run itself when it passed.
-            ->groupByRaw('workflow_id, passes - (1 - failed)')
+            ->groupBy('workflow_id', 'streak')
+            ->havingRaw('min(case when failed = 1 then created_at end) is not null or streak = max(last_streak)')
             ->orderByRaw('workflow_id, min(created_at)')
             ->get()
             ->map(fn (object $row): array => [
