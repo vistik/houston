@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PullRequestActivityKind;
-use App\Models\Concerns\MemoizesImmutableDates;
+use App\Models\Concerns\ParsesImmutableDatesQuickly;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Unguarded;
 use Illuminate\Database\Eloquent\Attributes\WithoutTimestamps;
@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[WithoutTimestamps]
 class PullRequestActivity extends Model
 {
-    use MemoizesImmutableDates;
+    use ParsesImmutableDatesQuickly;
 
     /**
      * @return array<string, string>

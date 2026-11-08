@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\BuildRepositoryReport;
 use App\Models\Repository;
 use App\Models\SystemEvent;
 use App\Models\Team;
@@ -10,7 +11,7 @@ use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
-    Queue::fake();
+    Queue::fake()->except(BuildRepositoryReport::class);
     CarbonImmutable::setTestNow('2026-10-07 12:00:00');
 });
 

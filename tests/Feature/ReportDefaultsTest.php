@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\BuildRepositoryReport;
 use App\Metrics\CiFailureRateScope;
 use App\Metrics\Granularity;
 use App\Models\Repository;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
-    Queue::fake();
+    Queue::fake()->except(BuildRepositoryReport::class);
 });
 
 it('opens reports on the last 30 days per day, with the CI failure rate on the default branch, until defaults are set', function () {

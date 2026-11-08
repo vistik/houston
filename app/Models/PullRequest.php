@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Enums\ChecksState;
 use App\Enums\PullRequestState;
-use App\Models\Concerns\MemoizesImmutableDates;
+use App\Models\Concerns\ParsesImmutableDatesQuickly;
 use Carbon\CarbonImmutable;
 use Database\Factories\PullRequestFactory;
 use Illuminate\Database\Eloquent\Attributes\Unguarded;
@@ -38,7 +38,7 @@ class PullRequest extends Model
     /** @use HasFactory<PullRequestFactory> */
     use HasFactory;
 
-    use MemoizesImmutableDates;
+    use ParsesImmutableDatesQuickly;
 
     /**
      * @return array<string, string>

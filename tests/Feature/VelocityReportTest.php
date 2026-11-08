@@ -449,6 +449,27 @@ it('reports whether the default branch is currently green', function () {
     expect(velocityReport($this->repository)['defaultBranchStatus']['state'])->toBe(BranchStatus::Passing);
 });
 
+it('finds the red streaks and the latest run among many green ones', function () {
+    $factory = WorkflowRun::factory()->for($this->repository);
+
+    foreach (range(72, 50) as $hours) {
+        $factory->at($this->now->subHours($hours))->create(['workflow_id' => 1, 'name' => 'tests']);
+    }
+
+    $factory->failed()->at($this->now->subHours(48))->create(['workflow_id' => 1, 'name' => 'tests']);
+    $factory->at($this->now->subHours(46), 0)->create(['workflow_id' => 1, 'name' => 'tests']);
+
+    foreach (range(40, 2) as $hours) {
+        $factory->at($this->now->subHours($hours))->create(['workflow_id' => 1, 'name' => 'tests']);
+    }
+
+    $report = velocityReport($this->repository);
+
+    expect($report['defaultBranchStatus']['state'])->toBe(BranchStatus::Passing)
+        ->and($report['defaultBranchStatus']['lastRunAt'])->toBe($this->now->subHours(2)->toIso8601String())
+        ->and($report['kpis']['ciRecoveryTime']['value'])->toEqual(2 * 3600);
+});
+
 it('measures people in working time and machines in wall-clock time', function () {
     config(['houston.working_time.days' => [1, 2, 3, 4, 5]]);
 

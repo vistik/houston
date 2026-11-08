@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Dependencies\DependencyOverview;
+use App\Enums\ReportStatus;
 use App\Enums\SystemEventLevel;
 use App\Enums\SystemEventType;
 use App\Http\Controllers\Concerns\PresentsRepositories;
@@ -74,14 +75,22 @@ class RepositoryController extends Controller
             $repository->load('sync');
         }
 
+        // The report and its status come from one read of the cache, however many of them are asked for.
+        $cached = null;
+        $latest = function () use (&$cached, $repository, $period, $includeBots): array {
+            return $cached ??= $this->reports->latestFull($repository, $period, $includeBots);
+        };
+
         return Inertia::render('repositories/show', [
             'repository' => $this->repositoryPayload($repository),
             'repositories' => Repository::query()->with('sync')->orderBy('owner')->orderBy('name')->get(['id', 'owner', 'name'])
                 ->map(fn (Repository $watched): array => ['id' => $watched->id, 'owner' => $watched->owner, 'name' => $watched->name, 'fullName' => $watched->fullName(), 'avatarUrl' => $watched->sync?->avatar_url]),
             'filters' => [...$period->filters(), 'granularity' => $period->granularity, 'complete' => $period->withoutCurrentBucket, 'bots' => $includeBots, 'event' => $event?->id],
+            'chartedPer' => $period->bucketGranularity(),
             'events' => TimelineEvent::payloads(),
             'event' => $this->focusedEventPayload($event, $repository->lookbackStart()),
-            'report' => fn (): array => $this->reports->full($repository, $period, $includeBots),
+            'report' => fn (): ?array => $latest()['report'],
+            'reportStatus' => fn (): ReportStatus => $latest()['status'],
             'dependencies' => fn (): ?array => $dependencies->for($repository),
             'view' => $repository->pageView()->value,
         ]);
