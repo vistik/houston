@@ -2,6 +2,7 @@
 
 use App\Enums\RepositorySyncStatus;
 use App\GitHub\GitHubClient;
+use App\Jobs\BuildRepositoryReport;
 use App\Jobs\SyncRepository;
 use App\Models\Repository;
 use App\Models\Setting;
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
-    Queue::fake();
+    Queue::fake()->except(BuildRepositoryReport::class);
     config(['houston.demo' => true, 'houston.github_token' => 'secret-token']);
 });
 

@@ -2,6 +2,8 @@
 
 namespace App\Reports;
 
+use App\Enums\ReportStatus;
+use App\Jobs\BuildRepositoryReport;
 use App\Metrics\Benchmarks;
 use App\Metrics\Ci\CiJob;
 use App\Metrics\CiFailureRateScope;
@@ -106,6 +108,52 @@ class ReportCache
     }
 
     /**
+     * The latest full report built, and whether it is current. A busy repository's report takes more
+     * time and memory than a web request should, so a page is served the one built from older data or
+     * settings while a queued job rebuilds it, and none until the first is built. A failed build isn't
+     * retried until the data or settings move on.
+     *
+     * @return array{report: array<string, mixed>|null, status: ReportStatus}
+     */
+    public function latestFull(Repository $repository, Period $period, bool $includeBots = false): array
+    {
+        $key = $this->key(ReportKind::Full, $repository, $period, $includeBots);
+        $version = $this->repositoryVersion($repository, $period, CiFailureRateScope::current());
+        $cached = Cache::get($key);
+        $report = is_array($cached) ? $cached['report'] : null;
+
+        if (is_array($cached) && ($cached['version'] ?? null) === $version) {
+            $status = ReportStatus::Current;
+        } elseif (Cache::get("{$key}:failed") === $version) {
+            $status = ReportStatus::Failed;
+        } else {
+            BuildRepositoryReport::dispatch($repository, $period, $includeBots);
+
+            // A sync queue has built it by now.
+            $built = $this->fresh($key, $version);
+            [$report, $status] = $built === null ? [$report, ReportStatus::Building] : [$built, ReportStatus::Current];
+        }
+
+        return [
+            'report' => is_array($report) ? Trends::describe(Metrics::describe($this->benchmarks->apply($report, $period))) : null,
+            'status' => $status,
+        ];
+    }
+
+    /**
+     * Remembers that building the full report from the current data and settings failed, so pages stop
+     * asking for it until they move on.
+     */
+    public function fullFailed(Repository $repository, Period $period, bool $includeBots = false): void
+    {
+        Cache::put(
+            $this->key(ReportKind::Full, $repository, $period, $includeBots).':failed',
+            $this->repositoryVersion($repository, $period, CiFailureRateScope::current()),
+            now()->addDays(self::UnusedDays),
+        );
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function summary(Repository $repository, Period $period): array
@@ -197,10 +245,15 @@ class ReportCache
         $scope = CiFailureRateScope::current();
 
         return $this->cached(
-            "houston:report:{$kind->value}:{$repository->id}:{$period->key()}:".(int) $includeBots,
+            $this->key($kind, $repository, $period, $includeBots),
             $this->repositoryVersion($repository, $period, $scope),
             fn (): array => $kind->build(new VelocityReport($repository, $period, $includeBots, ciFailureRateScope: $scope)),
         );
+    }
+
+    private function key(ReportKind $kind, Repository $repository, Period $period, bool $includeBots): string
+    {
+        return "houston:report:{$kind->value}:{$repository->id}:{$period->key()}:".(int) $includeBots;
     }
 
     /**
@@ -238,10 +291,10 @@ class ReportCache
      */
     private function cached(string $key, string $version, Closure $build): array
     {
-        $cached = Cache::get($key);
+        $cached = $this->fresh($key, $version);
 
-        if (is_array($cached) && ($cached['version'] ?? null) === $version) {
-            return $cached['report'];
+        if ($cached !== null) {
+            return $cached;
         }
 
         $report = $build();
@@ -249,5 +302,16 @@ class ReportCache
         Cache::put($key, ['version' => $version, 'report' => $report], now()->addDays(self::UnusedDays));
 
         return $report;
+    }
+
+    /**
+     * The report cached under the key, or null when there is none or it was built from older data or
+     * settings.
+     */
+    private function fresh(string $key, string $version): mixed
+    {
+        $cached = Cache::get($key);
+
+        return is_array($cached) && ($cached['version'] ?? null) === $version ? $cached['report'] : null;
     }
 }

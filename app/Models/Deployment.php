@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Enums\DeploymentSource;
 use App\Enums\DeploymentState;
-use App\Models\Concerns\MemoizesImmutableDates;
+use App\Models\Concerns\ParsesImmutableDatesQuickly;
 use Carbon\CarbonImmutable;
 use Database\Factories\DeploymentFactory;
 use Illuminate\Database\Eloquent\Attributes\Unguarded;
@@ -29,7 +29,7 @@ class Deployment extends Model
     /** @use HasFactory<DeploymentFactory> */
     use HasFactory;
 
-    use MemoizesImmutableDates;
+    use ParsesImmutableDatesQuickly;
 
     /**
      * @return array<string, string>

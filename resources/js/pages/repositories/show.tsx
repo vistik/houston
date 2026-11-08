@@ -1,6 +1,11 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { ChevronLeftIcon, ExternalIcon, TrashIcon } from '@/components/icons';
+import {
+    AlertIcon,
+    ChevronLeftIcon,
+    ExternalIcon,
+    TrashIcon,
+} from '@/components/icons';
 import { HistoryGap } from '@/components/repository/history-gap';
 import {
     ReportOptions,
@@ -18,6 +23,7 @@ import { SkeletonCell } from '@/components/report/widgets';
 import { SyncStatus } from '@/components/sync-status';
 import { Avatar } from '@/components/ui/avatar';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Tooltip } from '@/components/ui/hover-card';
 import { Select } from '@/components/ui/select';
 import { StickyToolbar } from '@/components/ui/sticky-toolbar';
 import { useLookbackConfirmation } from '@/hooks/use-lookback-confirmation';
@@ -31,7 +37,7 @@ import {
     reportQuery,
     ReportPeriod,
 } from '@/lib/periods';
-import type { ReportFilters } from '@/lib/periods';
+import type { Granularity, ReportFilters } from '@/lib/periods';
 import { TimelineEvents } from '@/lib/timeline-events';
 import { destroy, index, metric, show, wall } from '@/routes/repositories';
 import type {
@@ -41,6 +47,8 @@ import type {
     TimelineEvent,
     VelocityReport,
 } from '@/types';
+
+type ReportStatus = 'current' | 'building' | 'failed';
 
 type Props = {
     repository: RepositoryInfo;
@@ -52,9 +60,12 @@ type Props = {
         avatarUrl: string | null;
     }[];
     filters: ReportFilters;
+    chartedPer: Granularity;
     events: TimelineEvent[];
     event: FocusedTimelineEvent | null;
-    report: VelocityReport;
+    /** Built from older data or settings while it is rebuilt, and null until the first is built. */
+    report: VelocityReport | null;
+    reportStatus: ReportStatus;
     dependencies: DependencyOverview | null;
     view: RepositoryView;
 };
@@ -63,9 +74,11 @@ export default function RepositoryShow({
     repository,
     repositories,
     filters,
+    chartedPer,
     events,
     event,
     report,
+    reportStatus,
     dependencies,
     view,
 }: Props) {
@@ -75,9 +88,13 @@ export default function RepositoryShow({
 
     // Poll only the cheap sync state, and fetch the report again once a sync brings in new data.
     usePollWhile(repository.sync.inProgress, ['repository']);
+    usePollWhile(repository.sync.hasData && reportStatus === 'building', [
+        'report',
+        'reportStatus',
+    ]);
     useReloadOnChange(
         `${repository.sync.hasData}:${repository.sync.finishedAt}`,
-        ['report', 'dependencies'],
+        ['report', 'reportStatus', 'dependencies'],
     );
 
     const visit = (
@@ -185,11 +202,14 @@ export default function RepositoryShow({
             </div>
 
             <StickyToolbar className="mt-3 justify-end">
+                {repository.sync.hasData && report && (
+                    <OlderReportNote status={reportStatus} />
+                )}
                 <SyncStatus repository={repository} />
                 <ReportOptions
                     filters={filters}
-                    granularity={report.period.granularity}
-                    days={report.period.days}
+                    granularity={chartedPer}
+                    days={filters.days}
                     onChange={(changes) =>
                         choosePeriod({ ...filters, ...changes }, () =>
                             visit(repository.owner, repository.name, changes),
@@ -227,7 +247,7 @@ export default function RepositoryShow({
                 <HistoryGap repository={repository} period={filters} />
             )}
 
-            {repository.sync.hasData ? (
+            {repository.sync.hasData && report ? (
                 <ReportPeriod value={filters}>
                     <MetricHistoryContext
                         value={metricHistory({
@@ -282,8 +302,19 @@ export default function RepositoryShow({
                         </TimelineEvents>
                     </MetricHistoryContext>
                 </ReportPeriod>
+            ) : repository.sync.hasData && reportStatus === 'failed' ? (
+                <div className="mt-6 rounded-lg border border-bad/30 bg-bad-soft px-4 py-3 text-sm text-bad">
+                    Houston, we have a problem. This report couldn't be built.
+                    It will be tried again after the next sync.
+                </div>
             ) : (
-                <Loading />
+                <Loading
+                    message={
+                        repository.sync.hasData
+                            ? 'Crunching the numbers. Busy repositories can take a minute.'
+                            : 'Pulling pull requests, reviews and CI runs from GitHub. Large repositories can take a few minutes the first time.'
+                    }
+                />
             )}
 
             {!demo && (
@@ -323,7 +354,38 @@ function StopWatching({ repository }: { repository: RepositoryInfo }) {
     );
 }
 
-function Loading() {
+/**
+ * Says when the report shown was built from older data or settings, because it is being rebuilt or
+ * rebuilding it failed.
+ */
+function OlderReportNote({ status }: { status: ReportStatus }) {
+    if (status === 'building') {
+        return (
+            <span className="flex items-center gap-1.5 text-xs text-ink-muted">
+                <span className="relative flex size-2">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-60" />
+                    <span className="relative inline-flex size-2 rounded-full bg-accent" />
+                </span>
+                Updating report…
+            </span>
+        );
+    }
+
+    if (status === 'failed') {
+        return (
+            <Tooltip content="Rebuilding it with the latest data failed. It will be tried again after the next sync.">
+                <span className="flex items-center gap-1.5 text-xs text-bad">
+                    <AlertIcon width={13} height={13} />
+                    Showing an older report
+                </span>
+            </Tooltip>
+        );
+    }
+
+    return null;
+}
+
+function Loading({ message }: { message: string }) {
     return (
         <div className="mt-8">
             <Grid>
@@ -332,10 +394,7 @@ function Loading() {
                 ))}
                 <SkeletonCell span="full" className="h-48" />
             </Grid>
-            <p className="mt-6 text-center text-sm text-ink-muted">
-                Pulling pull requests, reviews and CI runs from GitHub. Large
-                repositories can take a few minutes the first time.
-            </p>
+            <p className="mt-6 text-center text-sm text-ink-muted">{message}</p>
         </div>
     );
 }

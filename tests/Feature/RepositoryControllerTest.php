@@ -1,17 +1,22 @@
 <?php
 
 use App\Enums\RepositorySyncStatus;
+use App\Jobs\BuildRepositoryReport;
 use App\Jobs\SyncRepository;
 use App\Models\Dependency;
 use App\Models\PullRequest;
 use App\Models\Repository;
 use App\Models\RepositorySync;
+use App\Reports\ReportCache;
+use Illuminate\Bus\UniqueLock;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
-    Queue::fake();
+    // Reports are built as soon as they are queued, as they are with a sync queue.
+    Queue::fake()->except(BuildRepositoryReport::class);
 });
 
 it('lists watched repositories and defers their summaries', function () {
@@ -70,6 +75,91 @@ it('skips the report when polling the sync state', function () {
             ->reloadOnly('repository', fn (Assert $reload) => $reload
                 ->has('repository.sync')
                 ->missing('report')));
+});
+
+it('builds the report in the queue rather than in the request', function () {
+    Queue::fake();
+    $repository = Repository::factory()->synced()->create(['owner' => 'acme', 'name' => 'app']);
+    $url = route('repositories.show', ['owner' => 'acme', 'name' => 'app', 'days' => 14]);
+
+    $this->get($url)
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('report', null)
+            ->where('reportStatus', 'building')
+            ->where('chartedPer', 'day'));
+
+    Queue::assertPushed(BuildRepositoryReport::class, function (BuildRepositoryReport $job) use ($repository): bool {
+        $job->handle(app(ReportCache::class));
+
+        return $job->uniqueId() === "{$repository->id}:14@day:UTC:0";
+    });
+
+    $this->get($url)
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('report.trend', 14)
+            ->where('reportStatus', 'current'));
+
+    Queue::assertPushed(BuildRepositoryReport::class, 1);
+});
+
+it('shows the last report while a newer one is built', function () {
+    $repository = Repository::factory()->synced()->create(['owner' => 'acme', 'name' => 'app']);
+    PullRequest::factory()->for($repository)->lifecycle(now()->subDays(2), mergedAfter: 1)->create();
+    $url = route('repositories.show', ['owner' => 'acme', 'name' => 'app']);
+
+    $this->get($url)->assertInertia(fn (Assert $page) => $page->where('report.kpis.throughput.value', 1));
+
+    Queue::fake();
+    PullRequest::factory()->for($repository)->lifecycle(now()->subDay(), mergedAfter: 1)->create();
+    $this->travel(1)->minute();
+    $repository->sync->update(['finished_at' => now()]);
+
+    $this->get($url)
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('report.kpis.throughput.value', 1)
+            ->where('reportStatus', 'building'));
+
+    Queue::assertPushed(BuildRepositoryReport::class, function (BuildRepositoryReport $job): bool {
+        $job->handle(app(ReportCache::class));
+
+        return true;
+    });
+
+    $this->get($url)
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('report.kpis.throughput.value', 2)
+            ->where('reportStatus', 'current'));
+});
+
+it('stops building a report that failed until the next sync', function () {
+    Queue::fake();
+    $repository = Repository::factory()->synced()->create(['owner' => 'acme', 'name' => 'app']);
+    $url = route('repositories.show', ['owner' => 'acme', 'name' => 'app']);
+
+    $this->get($url)->assertInertia(fn (Assert $page) => $page->where('reportStatus', 'building'));
+    Queue::assertPushed(BuildRepositoryReport::class, function (BuildRepositoryReport $job): bool {
+        // As the worker does when a job fails.
+        $job->failed();
+        (new UniqueLock(app(CacheRepository::class)))->release($job);
+
+        return true;
+    });
+
+    $this->get($url)
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('report', null)
+            ->where('reportStatus', 'failed'));
+    Queue::assertPushed(BuildRepositoryReport::class, 1);
+
+    $this->travel(1)->minute();
+    $repository->sync->update(['finished_at' => now()]);
+
+    $this->get($url)->assertInertia(fn (Assert $page) => $page->where('reportStatus', 'building'));
+    Queue::assertPushed(BuildRepositoryReport::class, 2);
 });
 
 it('serves repositories whose owner shares a name with an app page', function () {

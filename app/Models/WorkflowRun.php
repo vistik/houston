@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Enums\WorkflowRunConclusion;
 use App\Enums\WorkflowRunStatus;
-use App\Models\Concerns\MemoizesImmutableDates;
+use App\Models\Concerns\ParsesImmutableDatesQuickly;
 use Carbon\CarbonImmutable;
 use Database\Factories\WorkflowRunFactory;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -36,7 +36,7 @@ class WorkflowRun extends Model
     /** @use HasFactory<WorkflowRunFactory> */
     use HasFactory;
 
-    use MemoizesImmutableDates;
+    use ParsesImmutableDatesQuickly;
 
     /**
      * GitHub-hosted jobs are capped at six hours. Runs that "took" longer were never
