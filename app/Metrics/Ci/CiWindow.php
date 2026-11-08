@@ -16,10 +16,10 @@ final class CiWindow
 {
     private ?object $counts = null;
 
-    /** @var Collection<int, \stdClass>|null */
-    private ?Collection $durations = null;
+    /** @var array<string, Collection<int, int>> */
+    private array $durations = [];
 
-    /** @var Collection<int, int|float>|null */
+    /** @var Collection<int, int>|null */
     private ?Collection $commitDurations = null;
 
     /** @var Collection<int, int>|null */
@@ -39,8 +39,8 @@ final class CiWindow
     /**
      * @param  CiFailureRateScope  $failureRateScope  Which runs the CI failure rate counts.
      * @param  Closure(): object  $makeCounts
-     * @param  Closure(): Collection<int, \stdClass>  $makeDurations
-     * @param  Closure(): Collection<int, int|float>  $makeCommitDurations
+     * @param  Closure(string): Collection<int, int>  $makeDurations
+     * @param  Closure(): Collection<int, int>  $makeCommitDurations
      * @param  Closure(): Collection<int, int>  $makeRecoveryTimes
      * @param  Closure(): ?float  $makeFlakyRate
      * @param  Closure(): ?float  $makeRedShare
@@ -78,18 +78,18 @@ final class CiWindow
      * Wall-clock seconds of every decisive run, by column: duration_seconds (start to finish) or
      * queue_seconds (created to started).
      *
-     * @return Collection<int, int|float|null>
+     * @return Collection<int, int>
      */
     public function durations(string $column): Collection
     {
-        return ($this->durations ??= ($this->makeDurations)())->pluck($column);
+        return $this->durations[$column] ??= ($this->makeDurations)($column);
     }
 
     /**
      * Wall-clock seconds per commit, taken from its slowest decisive run, so quick automation
      * (labelers, triage) doesn't drown out the real CI.
      *
-     * @return Collection<int, int|float>
+     * @return Collection<int, int>
      */
     public function commitDurations(): Collection
     {
