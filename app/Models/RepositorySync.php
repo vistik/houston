@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable|null $rate_limited_until
  * @property RepositorySyncStatus|null $status Null only on a sync that was never saved.
  * @property RepositorySyncPhase|null $phase
- * @property DeploymentSource|null $deploy_source
+ * @property DeploymentSource|null $deploy_source How the repository ships lately: the source of its latest shipped deployment.
  * @property CarbonImmutable|null $phase_started_at
  * @property bool $backfill
  * @property bool|null $is_private Null until a sync has fetched it.

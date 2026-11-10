@@ -148,7 +148,7 @@ class VelocityReport
 
         // Load one extra month so the first deployment in the window knows what it shipped.
         $this->delivery = new DeliveryMetrics(
-            $this->repository->deployments()->where('deployed_at', '>=', $period->previousFrom->subDays(30))->get(),
+            $this->repository->deployments()->shipped()->where('deployed_at', '>=', $period->previousFrom->subDays(30))->get(),
             $this->pullRequests,
             $this->defaultBranch,
             $this->time,
