@@ -21,7 +21,9 @@ use stdClass;
  *
  * Busy repositories have tens of thousands of runs, so everything that can be counted, summed or
  * grouped happens in SQL. Only medians (which SQLite can't compute) and working-time durations are
- * finished in PHP, from small result sets.
+ * finished in PHP. Medians need a value per run, so those are streamed into plain lists rather than
+ * fetched as a row object each: a busy repository has hundreds of thousands of runs in a period, and
+ * a row object for each runs a worker out of memory.
  *
  * @phpstan-type Streak array{workflow_id: int, latest_name: string, last_run_at: CarbonImmutable, broken_at: CarbonImmutable|null, recovered_at: CarbonImmutable|null}
  * @phpstan-type FlakyJob array{workflowId: int, workflow: string, name: string, runs: int, failures: int, seconds: int, waitSeconds: int, lastFailure: mixed}
@@ -66,7 +68,7 @@ class CiMetrics
         return new CiWindow(
             failureRateScope: $this->failureRateScope,
             makeCounts: fn (): object => $this->counts($this->runs($from, $to))->first(),
-            makeDurations: fn (): Collection => $this->runs($from, $to)->decisive()->toBase()->get(['duration_seconds', 'queue_seconds']),
+            makeDurations: fn (): array => self::columns($this->runs($from, $to)->decisive()->toBase(), ['duration_seconds', 'queue_seconds']),
             makeCommitDurations: fn (): Collection => $this->runs($from, $to)->decisive()->toBase()
                 ->selectRaw('max(duration_seconds) as duration_seconds')
                 ->groupBy('head_sha')
@@ -142,7 +144,7 @@ class CiMetrics
             ->get()
             ->keyBy('workflow_id');
 
-        $durations = $window()->decisive()->toBase()->get(['workflow_id', 'duration_seconds', 'queue_seconds'])->groupBy('workflow_id');
+        $durations = self::columnsPer('workflow_id', $window()->decisive()->toBase(), ['duration_seconds', 'queue_seconds']);
 
         $latest = $this->repository->getConnection()->query()
             ->fromSub($window()->toBase()->select(['workflow_id', 'name', 'conclusion', 'status', 'url'])
@@ -154,7 +156,7 @@ class CiMetrics
         return $counts
             ->sortBy([['runs', 'desc'], ['first_id', 'asc']])
             ->map(function (object $row) use ($flaky, $durations, $latest, $excluded): array {
-                $runs = $durations->get($row->workflow_id, collect());
+                $runs = $durations[$row->workflow_id] ?? ['duration_seconds' => [], 'queue_seconds' => []];
                 $last = $latest[$row->workflow_id];
                 $commits = $flaky->get($row->workflow_id);
 
@@ -167,9 +169,9 @@ class CiMetrics
                     'defaultBranchFailureRate' => Stats::ratio((int) $row->default_branch_failed, (int) $row->default_branch),
                     'rerunRate' => Stats::ratio((int) $row->reruns, (int) $row->decisive),
                     'flakyRate' => $commits === null ? null : Stats::ratio((int) $commits->flaky, (int) $commits->commits),
-                    'queueTime' => Stats::median($runs->pluck('queue_seconds')),
-                    'duration' => Stats::median($runs->pluck('duration_seconds')),
-                    'durationP90' => Stats::percentile($runs->pluck('duration_seconds'), 90),
+                    'queueTime' => Stats::median($runs['queue_seconds']),
+                    'duration' => Stats::median($runs['duration_seconds']),
+                    'durationP90' => Stats::percentile($runs['duration_seconds'], 90),
                     'minutes' => (int) round((int) $row->seconds / 60),
                     'lastConclusion' => $last->conclusion ?? $last->status,
                     'lastUrl' => $last->url,
@@ -545,6 +547,48 @@ class CiMetrics
                 'broken_at' => $date($row->broken_at),
                 'recovered_at' => $date($row->recovered_at),
             ]);
+    }
+
+    /**
+     * The values of some columns of every row a query matches, as a list per column. Rows are
+     * streamed, so only the values are kept.
+     *
+     * @param  list<string>  $columns
+     * @return array<string, list<int|float|null>>
+     */
+    private static function columns(QueryBuilder $query, array $columns): array
+    {
+        $lists = array_fill_keys($columns, []);
+
+        foreach ($query->select($columns)->cursor() as $row) {
+            foreach ($columns as $column) {
+                $lists[$column][] = $row->{$column};
+            }
+        }
+
+        return $lists;
+    }
+
+    /**
+     * Like columns(), per value of another column.
+     *
+     * @param  list<string>  $columns
+     * @return array<array-key, array<string, list<int|float|null>>>
+     */
+    private static function columnsPer(string $groupedBy, QueryBuilder $query, array $columns): array
+    {
+        $lists = [];
+
+        foreach ($query->select([$groupedBy, ...$columns])->cursor() as $row) {
+            $group = $row->{$groupedBy};
+            $lists[$group] ??= array_fill_keys($columns, []);
+
+            foreach ($columns as $column) {
+                $lists[$group][$column][] = $row->{$column};
+            }
+        }
+
+        return $lists;
     }
 
     /**
