@@ -16,8 +16,8 @@ final class CiWindow
 {
     private ?object $counts = null;
 
-    /** @var Collection<int, \stdClass>|null */
-    private ?Collection $durations = null;
+    /** @var array<string, list<int|float|null>>|null */
+    private ?array $durations = null;
 
     /** @var Collection<int, int|float>|null */
     private ?Collection $commitDurations = null;
@@ -39,7 +39,7 @@ final class CiWindow
     /**
      * @param  CiFailureRateScope  $failureRateScope  Which runs the CI failure rate counts.
      * @param  Closure(): object  $makeCounts
-     * @param  Closure(): Collection<int, \stdClass>  $makeDurations
+     * @param  Closure(): array<string, list<int|float|null>>  $makeDurations  Each column's value per decisive run.
      * @param  Closure(): Collection<int, int|float>  $makeCommitDurations
      * @param  Closure(): Collection<int, int>  $makeRecoveryTimes
      * @param  Closure(): ?float  $makeFlakyRate
@@ -82,7 +82,7 @@ final class CiWindow
      */
     public function durations(string $column): Collection
     {
-        return ($this->durations ??= ($this->makeDurations)())->pluck($column);
+        return collect(($this->durations ??= ($this->makeDurations)())[$column]);
     }
 
     /**
