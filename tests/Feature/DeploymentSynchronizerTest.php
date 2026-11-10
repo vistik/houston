@@ -103,8 +103,8 @@ it('falls back to published releases', function () {
         ->and($this->repository->sync->fresh()->deploy_source)->toBe(DeploymentSource::Releases);
 });
 
-it('switches to deployments once a repository starts recording them', function () {
-    Deployment::factory()->for($this->repository)->create(['source' => DeploymentSource::Releases]);
+it('keeps releases next to deployments', function () {
+    Deployment::factory()->for($this->repository)->at(CarbonImmutable::parse('2026-09-20 08:00:00'))->create(['source' => DeploymentSource::Releases]);
 
     fakeDeployments([
         ['databaseId' => 5, 'environment' => 'production', 'commitOid' => 'c5', 'createdAt' => '2026-10-06T10:00:00Z', 'ref' => ['name' => 'main'], 'latestStatus' => ['state' => 'SUCCESS', 'createdAt' => '2026-10-06T10:01:00Z']],
@@ -112,7 +112,40 @@ it('switches to deployments once a repository starts recording them', function (
 
     syncDeployments($this->repository);
 
-    expect(Deployment::pluck('source')->all())->toBe([DeploymentSource::Deployments]);
+    expect(Deployment::orderBy('source')->pluck('source')->all())->toBe([DeploymentSource::Deployments, DeploymentSource::Releases])
+        ->and($this->repository->sync->fresh()->deploy_source)->toBe(DeploymentSource::Deployments);
+});
+
+it('counts a release once when a deployment shipped its tag', function () {
+    fakeDeployments([
+        ['databaseId' => 5, 'environment' => 'production', 'commitOid' => 'c5', 'createdAt' => '2026-10-06T10:00:00Z', 'ref' => ['name' => 'v1.5.0', 'prefix' => 'refs/tags/'], 'latestStatus' => ['state' => 'SUCCESS', 'createdAt' => '2026-10-06T10:01:00Z']],
+    ], [
+        ['id' => 21, 'tag_name' => 'v1.5.0', 'draft' => false, 'prerelease' => false, 'target_commitish' => 'main', 'published_at' => '2026-10-06T09:00:00Z', 'created_at' => '2026-10-06T08:00:00Z'],
+        ['id' => 20, 'tag_name' => 'v1.4.0', 'draft' => false, 'prerelease' => false, 'target_commitish' => 'main', 'published_at' => '2026-09-20T08:00:00Z', 'created_at' => '2026-09-20T07:00:00Z'],
+    ]);
+
+    syncDeployments($this->repository);
+
+    expect(Deployment::count())->toBe(3)
+        ->and(Deployment::shipped()->orderBy('deployed_at')->get()->map(fn (Deployment $deployment): string => $deployment->name ?? $deployment->ref)->all())->toBe(['v1.4.0', 'v1.5.0'])
+        ->and(Deployment::shipped()->where('source', DeploymentSource::Releases)->sole()->name)->toBe('v1.4.0');
+});
+
+it('ships by releases once deployments go quiet while releases keep being published', function () {
+    Deployment::factory()->for($this->repository)->at(CarbonImmutable::parse('2026-09-01 10:00:00'))->create(['source' => DeploymentSource::Deployments, 'ref' => 'main']);
+    $this->state->update(['deployments_synced_at' => CarbonImmutable::parse('2026-10-06 12:00:00')]);
+
+    fakeDeployments([], [
+        ['id' => 21, 'tag_name' => 'v1.5.0', 'draft' => false, 'prerelease' => false, 'target_commitish' => 'main', 'published_at' => '2026-10-06T08:00:00Z', 'created_at' => '2026-10-06T07:00:00Z'],
+        ['id' => 20, 'tag_name' => 'v1.4.0', 'draft' => false, 'prerelease' => false, 'target_commitish' => 'main', 'published_at' => '2026-09-20T08:00:00Z', 'created_at' => '2026-09-20T07:00:00Z'],
+    ]);
+
+    syncDeployments($this->repository);
+
+    // No releases were cached yet, so their history is fetched despite the incremental window.
+    expect(Deployment::shipped()->count())->toBe(3)
+        ->and(Deployment::where('source', DeploymentSource::Releases)->orderBy('deployed_at')->pluck('name')->all())->toBe(['v1.4.0', 'v1.5.0'])
+        ->and($this->repository->sync->fresh()->deploy_source)->toBe(DeploymentSource::Releases);
 });
 
 it('records that a repository has no deploy signal', function () {

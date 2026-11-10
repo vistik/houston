@@ -10,10 +10,8 @@ use App\Models\RepositorySync;
 use Carbon\CarbonImmutable;
 
 /**
- * Caches production deployments, detecting per repository where they come from.
- *
- * Repositories that record GitHub Deployments to a production-like environment use those.
- * Everything else falls back to published releases, which is how libraries ship.
+ * Caches production deployments: GitHub Deployments to a production-like environment, and published releases,
+ * which is how libraries ship. Both are kept; a release that a deployment shipped counts once (see Deployment::shipped).
  */
 class DeploymentSynchronizer
 {
@@ -46,27 +44,28 @@ class DeploymentSynchronizer
         // Statuses of recent deployments can still change, so overlap the incremental window.
         $since = $backfill ? $lookbackStart : ($state->deployments_synced_at?->subDays(2) ?? $lookbackStart);
 
-        $deployments = $this->fetchDeployments($repository, $since);
-        $alreadyUsesDeployments = $repository->deployments()->where('source', DeploymentSource::Deployments)->exists();
-
-        $source = $deployments !== [] || $alreadyUsesDeployments
-            ? DeploymentSource::Deployments
-            : DeploymentSource::Releases;
-
-        $rows = $source === DeploymentSource::Deployments ? $deployments : $this->fetchReleases($repository, $since);
-
-        $repository->deployments()->where('source', '!=', $source)->delete();
+        $rows = [
+            ...$this->fetchDeployments($repository, $this->sinceFor($repository, DeploymentSource::Deployments, $since, $lookbackStart)),
+            ...$this->fetchReleases($repository, $this->sinceFor($repository, DeploymentSource::Releases, $since, $lookbackStart)),
+        ];
 
         if ($rows !== []) {
             Deployment::upsert($rows, ['repository_id', 'source', 'external_id']);
         }
 
-        $hasAny = $repository->deployments()->exists();
-
         $state->update([
-            'deploy_source' => $hasAny ? $source : null,
+            'deploy_source' => $repository->deployments()->shipped()->latest('deployed_at')->value('source'),
             'deployments_synced_at' => $startedAt,
         ]);
+    }
+
+    /**
+     * Where to fetch a source from. Without any of it cached yet, its whole history is fetched, so that a source
+     * a repository only starts using, or that an earlier version of this sync skipped, isn't cut short.
+     */
+    private function sinceFor(Repository $repository, DeploymentSource $source, CarbonImmutable $since, CarbonImmutable $lookbackStart): CarbonImmutable
+    {
+        return $repository->deployments()->where('source', $source)->exists() ? $since : $lookbackStart;
     }
 
     /**

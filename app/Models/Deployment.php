@@ -7,14 +7,19 @@ use App\Enums\DeploymentState;
 use App\Models\Concerns\ParsesImmutableDatesQuickly;
 use Carbon\CarbonImmutable;
 use Database\Factories\DeploymentFactory;
+use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Attributes\Unguarded;
 use Illuminate\Database\Eloquent\Attributes\WithoutTimestamps;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * A cached production deployment, from GitHub Deployments or a GitHub release.
+ *
+ * A repository can have both. A release that a GitHub Deployment shipped by its tag is the same ship, so
+ * only the deployment counts.
  *
  * @property DeploymentSource $source
  * @property DeploymentState $state
@@ -50,6 +55,23 @@ class Deployment extends Model
     public function repository(): BelongsTo
     {
         return $this->belongsTo(Repository::class);
+    }
+
+    /**
+     * Leaves out releases whose tag a GitHub Deployment shipped, so a release that was deployed counts once.
+     *
+     * @param  Builder<self>  $query
+     */
+    #[Scope]
+    protected function shipped(Builder $query): void
+    {
+        $query->whereNot(fn (Builder $query) => $query
+            ->where('source', DeploymentSource::Releases)
+            ->whereExists(fn ($deployed) => $deployed
+                ->from('deployments', 'deployed')
+                ->whereColumn('deployed.repository_id', 'deployments.repository_id')
+                ->where('deployed.source', DeploymentSource::Deployments)
+                ->whereColumn('deployed.ref', 'deployments.name')));
     }
 
     /**
